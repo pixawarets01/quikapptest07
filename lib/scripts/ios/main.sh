@@ -614,11 +614,11 @@ if [ -n "${PROFILE_URL:-}" ] && [[ "${PROFILE_URL}" == http* ]]; then
             # Extract profile information for debugging
             log "🔍 Profile information:"
             # shellcheck disable=SC2168
-            local profile_name=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Name raw - 2>/dev/null || echo "unknown")
+            profile_name=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Name raw - 2>/dev/null || echo "unknown")
             # shellcheck disable=SC2168
-            local profile_uuid=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract UUID raw - 2>/dev/null || echo "unknown")
+            profile_uuid=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract UUID raw - 2>/dev/null || echo "unknown")
             # shellcheck disable=SC2168
-            local profile_type=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Entitlements.get-task-allow raw - 2>/dev/null | grep -q "true" && echo "development" || echo "distribution")
+            profile_type=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Entitlements.get-task-allow raw - 2>/dev/null | grep -q "true" && echo "development" || echo "distribution")
             
             log "   Name: ${profile_name}"
             log "   UUID: ${profile_uuid}"
