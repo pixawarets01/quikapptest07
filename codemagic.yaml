@@ -4,7 +4,7 @@ environment:
     vars:
       VERSION_NAME: $VERSION_NAME
       VERSION_CODE: $VERSION_CODE
-      KEY_STORE: $KEY_STORE
+      KEY_STORE_URL: $KEY_STORE_URL
       CM_KEYSTORE_PASSWORD: $CM_KEYSTORE_PASSWORD
       CM_KEY_ALIAS: $CM_KEY_ALIAS
       CM_KEY_PASSWORD: $CM_KEY_PASSWORD
@@ -128,7 +128,7 @@ scripts:
         echo "IS_CHATBOT: $IS_CHATBOT"
 
         echo "*********** Android Keystore ***********"
-        echo "KEY_STORE: $KEY_STORE"
+        echo "KEY_STORE_URL: $KEY_STORE_URL"
         echo "CM_KEYSTORE_PASSWORD: $CM_KEYSTORE_PASSWORD"
         echo "CM_KEY_ALIAS: $CM_KEY_ALIAS"
         echo "CM_KEY_PASSWORD: $CM_KEY_PASSWORD"
@@ -3377,16 +3377,11 @@ workflows:
               --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
               --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
               --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
-              --dart-define=KEY_STORE="$KEY_STORE" \
-              --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
-              --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
-              --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" \
               --dart-define=CERT_PASSWORD="$CERT_PASSWORD" \
               --dart-define=PROFILE_URL="$PROFILE_URL" \
               --dart-define=CERT_CER_URL="$CERT_CER_URL" \
               --dart-define=CERT_KEY_URL="$CERT_KEY_URL" \
               --dart-define=APP_STORE_CONNECT_KEY_IDENTIFIER="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-              --dart-define=firebase_config_android="$firebase_config_android" \
               --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS"
 
         - name: 📝 Inject dynamic Podfile for xcodebuild
