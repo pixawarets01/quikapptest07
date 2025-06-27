@@ -87,8 +87,8 @@ scripts:
         echo "firebase_config_ios: $firebase_config_ios"
 
         echo "*********** Splash Configuration ***********"
-        echo "SPLASH: $SPLASH"
-        echo "SPLASH_BG:$SPLASH_BG"
+        echo "SPLASH_URL: $SPLASH_URL"
+        echo "SPLASH_BG: $SPLASH_BG_URL"
         echo "SPLASH_BG_COLOR: $SPLASH_BG_COLOR"
         echo "SPLASH_TAGLINE: $SPLASH_TAGLINE"
         echo "SPLASH_TAGLINE_COLOR: $SPLASH_TAGLINE_COLOR"
@@ -3384,6 +3384,27 @@ workflows:
           RUBY
           cd ..
 
+      - name: 🔍 Verify Certificate Setup
+        script: |
+          echo "🔍 Verifying certificate and keychain setup..."
+          
+          # List available certificates
+          echo "📋 Available certificates in keychain:"
+          security find-identity -v -p codesigning
+          
+          # Verify the specific certificate we need
+          echo "🔍 Looking for Apple Distribution certificate..."
+          if security find-identity -v -p codesigning | grep -q "Apple Distribution"; then
+            echo "✅ Apple Distribution certificate found"
+            CERT_HASH=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -1 | cut -d' ' -f2)
+            echo "🔑 Certificate hash: $CERT_HASH"
+          else
+            echo "❌ Apple Distribution certificate not found"
+            echo "🔍 Available certificates:"
+            security find-identity -v -p codesigning
+            exit 1
+          fi
+
       - name: 🔄 Regenerate Environment Configuration
         script: |
           echo "🔄 Regenerating environment configuration with current values..."
@@ -3465,7 +3486,17 @@ workflows:
 
       - name: Generate ExportOptions Build
         script: |
+          echo "📥 Loading environment from $CM_ENV"
+          set -a
+          source "$CM_ENV"
+          set +a
+          
           echo "✅ Creating ExportOptions.plist:"
+          echo "🔍 Certificate Identity: $CODE_SIGN_IDENTITY"
+          echo "🔍 Team ID: $APPLE_TEAM_ID"
+          echo "🔍 Bundle ID: $BUNDLE_ID"
+          echo "🔍 Profile Name: $PROFILE_NAME"
+          
           cat > ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -3487,10 +3518,19 @@ workflows:
             <key>stripSwiftSymbols</key>
             <true/>
             <key>signingCertificate</key>
-            <string>$CODE_SIGN_IDENTITY</string>
+            <string>Apple Distribution</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <false/>
+            <key>thinning</key>
+            <string>&lt;none&gt;</string>
           </dict>
           </plist>
           EOF
+          
+          echo "📋 ExportOptions.plist created:"
+          cat ExportOptions.plist
 
       - name: Flutter IPA Build
         script: |
@@ -3577,6 +3617,9 @@ workflows:
           echo "✅ PROFILE_NAME=$PROFILE_NAME"
           echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
 
+          echo "🔍 Available certificates:"
+          security find-identity -v -p codesigning
+
           xcodebuild -workspace "$XCODE_WORKSPACE" \
             -scheme "$XCODE_SCHEME" \
             -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
@@ -3590,18 +3633,35 @@ workflows:
 
       - name: 📦 Export signed IPA
         script: |
+          echo "📥 Loading environment from $CM_ENV"
+          set -a
+          source "$CM_ENV"
+          set +a
+          
           echo "✅ Start Exporting:"
+          echo "🔍 Archive path: $CM_BUILD_DIR/Runner.xcarchive"
+          echo "🔍 Export path: $CM_BUILD_DIR/ios_output"
+          
+          # Create export directory
+          mkdir -p "$CM_BUILD_DIR/ios_output"
+          
+          # Export with detailed logging
           xcodebuild -exportArchive \
             -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
             -exportPath "$CM_BUILD_DIR/ios_output" \
-            -exportOptionsPlist ExportOptions.plist
+            -exportOptionsPlist ExportOptions.plist \
+            -verbose
+          
           echo "Contents of output directory:"
-          ls -lh "$CM_BUILD_DIR/ios_output"
+          ls -lh "$CM_BUILD_DIR/ios_output" || echo "Directory not found"
 
           if [[ -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
             echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
+            echo "📊 IPA file size: $(du -h "$CM_BUILD_DIR/ios_output/Runner.ipa" | cut -f1)"
           else
             echo "❌ IPA file was not generated!"
+            echo "🔍 Checking for any generated files:"
+            find "$CM_BUILD_DIR/ios_output" -type f 2>/dev/null || echo "No files found"
             exit 1
           fi
 
