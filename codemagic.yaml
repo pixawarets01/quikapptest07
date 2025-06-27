@@ -84,7 +84,7 @@ scripts:
         echo "firebase_config_android: $firebase_config_android"
 
         echo "*********** Firebase IOS config file ***********"
-        echo "FIREBASE_CONFIG_IOS: $FIREBASE_CONFIG_IOS"
+        echo "firebase_config_ios: $firebase_config_ios"
 
         echo "*********** Splash Configuration ***********"
         echo "SPLASH: $SPLASH"
@@ -308,8 +308,8 @@ scripts:
 
           # 1. Download and apply Firebase config
           mkdir -p firebase/ios
-          if [ -n "$FIREBASE_CONFIG_IOS" ]; then
-            wget -O firebase/ios/GoogleService-Info.plist "$FIREBASE_CONFIG_IOS"
+          if [ -n "$firebase_config_ios" ]; then
+            wget -O firebase/ios/GoogleService-Info.plist "$firebase_config_ios"
           fi
 
           if [ -f "firebase/ios/GoogleService-Info.plist" ]; then
@@ -880,7 +880,7 @@ scripts:
             --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
             --dart-define=IS_STORAGE="$IS_STORAGE" \
             --dart-define=firebase_config_android="$firebase_config_android" \
-            --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS" \
+            --dart-define=firebase_config_ios="$firebase_config_ios" \
             --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
             --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
@@ -944,7 +944,7 @@ scripts:
             --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
             --dart-define=IS_STORAGE="$IS_STORAGE" \
             --dart-define=firebase_config_android="$firebase_config_android" \
-            --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS" \
+            --dart-define=firebase_config_ios="$firebase_config_ios" \
             --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
             --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
@@ -1003,7 +1003,7 @@ scripts:
             --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
             --dart-define=IS_STORAGE="$IS_STORAGE" \
             --dart-define=firebase_config_android="$firebase_config_android" \
-            --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS" \
+            --dart-define=firebase_config_ios="$firebase_config_ios" \
             --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
             --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
@@ -1496,15 +1496,15 @@ scripts:
       script: |
         echo "📦 Setting up iOS Firebase Push Notifications..."
 
-        if [[ -n "$FIREBASE_CONFIG_IOS" ]]; then
-          echo "🔗 Firebase Config URL: $FIREBASE_CONFIG_IOS"
+        if [[ -n "$firebase_config_ios" ]]; then
+          echo "🔗 Firebase Config URL: $firebase_config_ios"
 
-          if [[ "$FIREBASE_CONFIG_IOS" =~ ^https:// ]]; then
+          if [[ "$firebase_config_ios" =~ ^https:// ]]; then
         
           echo "⬇️ Downloading GoogleService-Info.plist with retry..."
         
           for i in {1..5}; do
-          wget -O ios/Runner/GoogleService-Info.plist "$FIREBASE_CONFIG_IOS" && break
+          wget -O ios/Runner/GoogleService-Info.plist "$firebase_config_ios" && break
           echo "❌ Download failed, retrying in $((2 ** i))s..."
           sleep $((2 ** i))
           done
@@ -1516,7 +1516,7 @@ scripts:
         
         
         #            echo "⬇️ Downloading GoogleService-Info.plist..."
-        #            wget -O ios/Runner/GoogleService-Info.plist "$FIREBASE_CONFIG_IOS"
+        #            wget -O ios/Runner/GoogleService-Info.plist "$firebase_config_ios"
         #            if [ $? -eq 0 ]; then
         #              echo "✅ GoogleService-Info.plist placed in ios/Runner"
         #            else
@@ -1524,7 +1524,7 @@ scripts:
         #              exit 1
         #            fi
           else
-            echo "❌ Error: Invalid URL format for FIREBASE_CONFIG_IOS"
+            echo "❌ Error: Invalid URL format for firebase_config_ios"
             exit 1
           fi
         else
@@ -3328,7 +3328,7 @@ workflows:
               --dart-define=CERT_KEY_URL="$CERT_KEY_URL" \
               --dart-define=APP_STORE_CONNECT_KEY_IDENTIFIER="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
               --dart-define=firebase_config_android="$firebase_config_android" \
-              --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS"
+              --dart-define=firebase_config_ios="$firebase_config_ios"
 
         - name: 📝 Inject dynamic Podfile for xcodebuild
           script: |
