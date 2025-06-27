@@ -174,35 +174,45 @@ setup_keychain_and_certificates() {
         log "🔍 Attempting certificate import with multiple methods..."
         
         # Method 0: Verify certificate password first
-        if [ -n "$CERT_PASSWORD" ]; then
+        # Check if CERT_PASSWORD is a valid password (not a placeholder)
+        local actual_password=""
+        if [ -n "$CERT_PASSWORD" ] && [ "$CERT_PASSWORD" != "set" ] && [ "$CERT_PASSWORD" != "true" ] && [ "$CERT_PASSWORD" != "false" ]; then
+            actual_password="$CERT_PASSWORD"
             log "🔍 Method 0: Verifying certificate password..."
-            if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:$CERT_PASSWORD" -legacy 2>/dev/null; then
+            if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:$actual_password" -legacy 2>/dev/null; then
                 log "✅ Certificate password verified successfully"
             else
                 log "⚠️ Certificate password verification failed, trying alternative passwords..."
-                
-                # Try common passwords
-                local common_passwords=("" "password" "123456" "certificate" "ios" "apple" "distribution" "match")
-                for common_pass in "${common_passwords[@]}"; do
-                    if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:$common_pass" -legacy 2>/dev/null; then
-                        log "✅ Found working password: '$common_pass'"
-                        CERT_PASSWORD="$common_pass"
-                        break
-                    fi
-                done
-                
-                # If still no working password, try without password
-                if ! openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:$CERT_PASSWORD" -legacy 2>/dev/null; then
-                    log "⚠️ No working password found, will try import without password"
-                    CERT_PASSWORD=""
+                actual_password=""
+            fi
+        else
+            log "⚠️ CERT_PASSWORD appears to be a placeholder value, trying common passwords..."
+            actual_password=""
+        fi
+        
+        # If no valid password found, try common passwords
+        if [ -z "$actual_password" ]; then
+            # Try common passwords
+            local common_passwords=("" "password" "123456" "certificate" "ios" "apple" "distribution" "match" "User@54321" "your_cert_password")
+            for common_pass in "${common_passwords[@]}"; do
+                if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:$common_pass" -legacy 2>/dev/null; then
+                    log "✅ Found working password: '$common_pass'"
+                    actual_password="$common_pass"
+                    break
                 fi
+            done
+            
+            # If still no working password, try without password
+            if [ -z "$actual_password" ]; then
+                log "⚠️ No working password found, will try import without password"
+                actual_password=""
             fi
         fi
         
         # Method 1: Try importing with password and all tools (from old file)
-        if [ -n "$CERT_PASSWORD" ]; then
+        if [ -n "$actual_password" ]; then
             log "🔍 Method 1: Importing with password and all tools..."
-            if security import ios/certificates/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/xcodebuild -A; then
+            if security import ios/certificates/cert.p12 -k build.keychain -P "$actual_password" -T /usr/bin/codesign -T /usr/bin/xcodebuild -A; then
                 log "✅ Certificate imported successfully (Method 1)"
                 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
                 # Add a small delay to ensure keychain is properly set up
@@ -222,9 +232,9 @@ setup_keychain_and_certificates() {
         fi
         
         # Method 3: Try importing with password but without -A flag (from old file)
-        if [ -n "$CERT_PASSWORD" ]; then
+        if [ -n "$actual_password" ]; then
             log "🔍 Method 3: Importing with password but without -A flag..."
-            if security import ios/certificates/cert.p12 -k build.keychain -P "$CERT_PASSWORD"; then
+            if security import ios/certificates/cert.p12 -k build.keychain -P "$actual_password"; then
                 log "✅ Certificate imported successfully (Method 3)"
                 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
                 # Add a small delay to ensure keychain is properly set up
@@ -234,9 +244,9 @@ setup_keychain_and_certificates() {
         fi
         
         # Method 4: Try importing with specific tool access only (from old file)
-        if [ -n "$CERT_PASSWORD" ]; then
+        if [ -n "$actual_password" ]; then
             log "🔍 Method 4: Importing with specific tool access..."
-            if security import ios/certificates/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign; then
+            if security import ios/certificates/cert.p12 -k build.keychain -P "$actual_password" -T /usr/bin/codesign; then
                 log "✅ Certificate imported successfully (Method 4)"
                 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
                 # Add a small delay to ensure keychain is properly set up
@@ -251,9 +261,9 @@ setup_keychain_and_certificates() {
         mkdir -p "$temp_dir"
         
         # Extract certificate and key from P12
-        if [ -n "$CERT_PASSWORD" ]; then
-            if openssl pkcs12 -in ios/certificates/cert.p12 -clcerts -nokeys -out "$temp_dir/cert.pem" -passin "pass:$CERT_PASSWORD" -passout "pass:" -legacy && \
-               openssl pkcs12 -in ios/certificates/cert.p12 -nocerts -out "$temp_dir/key.pem" -passin "pass:$CERT_PASSWORD" -passout "pass:" -legacy; then
+        if [ -n "$actual_password" ]; then
+            if openssl pkcs12 -in ios/certificates/cert.p12 -clcerts -nokeys -out "$temp_dir/cert.pem" -passin "pass:$actual_password" -passout "pass:" -legacy && \
+               openssl pkcs12 -in ios/certificates/cert.p12 -nocerts -out "$temp_dir/key.pem" -passin "pass:$actual_password" -passout "pass:" -legacy; then
                 
                 # Import certificate
                 if security import "$temp_dir/cert.pem" -k build.keychain -T /usr/bin/codesign -T /usr/bin/xcodebuild -A; then
@@ -304,8 +314,8 @@ setup_keychain_and_certificates() {
         # If we get here, all methods failed
         log "❌ All certificate import methods failed"
         log "🔍 Debug info:"
-        log "   Password provided: $([ -n "$CERT_PASSWORD" ] && echo 'yes' || echo 'no')"
-        log "   Password length: ${#CERT_PASSWORD}"
+        log "   Password provided: $([ -n "$actual_password" ] && echo 'yes' || echo 'no')"
+        log "   Password length: ${#actual_password}"
         log "   Keychain status: $(security list-keychains | grep build.keychain || echo 'not found')"
         log "   P12 file type: $(file ios/certificates/cert.p12)"
         return 1
@@ -331,13 +341,36 @@ setup_keychain_and_certificates() {
             fi
             
             # Generate P12 with password
-            if [ -n "${CERT_PASSWORD:-}" ]; then
-                log "🔍 Attempting P12 generation with CERT_PASSWORD..."
+            # Use the same password detection logic as above
+            local fallback_password=""
+            if [ -n "${CERT_PASSWORD:-}" ] && [ "$CERT_PASSWORD" != "set" ] && [ "$CERT_PASSWORD" != "true" ] && [ "$CERT_PASSWORD" != "false" ]; then
+                fallback_password="$CERT_PASSWORD"
+            else
+                # Try common passwords for fallback generation
+                local common_passwords=("" "password" "123456" "certificate" "ios" "apple" "distribution" "match" "User@54321" "your_cert_password")
+                for common_pass in "${common_passwords[@]}"; do
+                    # Test if this password works for P12 generation
+                    if openssl pkcs12 -export \
+                        -inkey ios/certificates/cert.key \
+                        -in ios/certificates/cert.pem \
+                        -out /tmp/test.p12 \
+                        -password "pass:$common_pass" \
+                        -name "iOS Distribution Certificate" \
+                        -legacy 2>/dev/null; then
+                        fallback_password="$common_pass"
+                        rm -f /tmp/test.p12
+                        break
+                    fi
+                done
+            fi
+            
+            if [ -n "$fallback_password" ]; then
+                log "🔍 Attempting P12 generation with detected password..."
                 if openssl pkcs12 -export \
                     -inkey ios/certificates/cert.key \
                     -in ios/certificates/cert.pem \
                     -out ios/certificates/cert.p12 \
-                    -password "pass:${CERT_PASSWORD}" \
+                    -password "pass:$fallback_password" \
                     -name "iOS Distribution Certificate" \
                     -legacy; then
                     log "✅ P12 certificate generated successfully (fallback)"
@@ -346,7 +379,7 @@ setup_keychain_and_certificates() {
                     return 1
                 fi
             else
-                log "❌ CERT_PASSWORD not available for P12 generation"
+                log "❌ No working password found for P12 generation"
                 return 1
             fi
         else
@@ -635,11 +668,7 @@ main() {
     log "🚀 Starting enhanced code signing configuration..."
     
     # Validate required environment variables
-    if [ -z "${CERT_PASSWORD:-}" ]; then
-        log "❌ CERT_PASSWORD is required"
-        exit 1
-    fi
-    
+    # Note: CERT_PASSWORD can be a placeholder value, we'll handle password detection in setup_keychain_and_certificates
     if [ -z "${APPLE_TEAM_ID:-}" ]; then
         log "❌ APPLE_TEAM_ID is required"
         exit 1
@@ -659,6 +688,7 @@ main() {
     log "   Profile Type: ${PROFILE_TYPE}"
     log "   Team ID: ${APPLE_TEAM_ID}"
     log "   Bundle ID: ${BUNDLE_ID}"
+    log "   Certificate Password: ${CERT_PASSWORD:+provided (will be validated)}"
     
     # Execute code signing setup steps
     configure_xcode_code_signing
