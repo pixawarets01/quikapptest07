@@ -28,7 +28,7 @@ cat > ExportOptions.plist <<EOF
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>app-store-connect</string>
+  <string>app-store</string>
   <key>signingStyle</key>
   <string>automatic</string>
   <key>teamID</key>
@@ -97,7 +97,7 @@ if grep -q "does not support provisioning profiles" export.log; then
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>app-store-connect</string>
+  <string>app-store</string>
   <key>signingStyle</key>
   <string>manual</string>
   <key>teamID</key>
@@ -153,7 +153,7 @@ EOF
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>app-store-connect</string>
+  <string>app-store</string>
   <key>teamID</key>
   <string>$APPLE_TEAM_ID</string>
   <key>compileBitcode</key>
@@ -190,7 +190,7 @@ EOF
 <plist version="1.0">
 <dict>
   <key>method</key>
-  <string>app-store-connect</string>
+  <string>app-store</string>
   <key>teamID</key>
   <string>$APPLE_TEAM_ID</string>
   <key>compileBitcode</key>
