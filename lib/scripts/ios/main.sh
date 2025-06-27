@@ -90,8 +90,25 @@ validate_environment_variables() {
     if [[ "${WORKFLOW_ID}" == "auto-ios-workflow" ]] && [[ "${CERT_P12_URL:-}" == "auto-generated" ]]; then
         log "🔐 Auto-ios-workflow detected with auto-generated certificates - skipping certificate validation"
     else
-        if [[ -z "${CERT_P12_URL:-}" ]] && [[ -z "${CERT_CER_URL:-}" ]] && [[ -z "${CERT_KEY_URL:-}" ]]; then
-            missing_vars+=("CERT_P12_URL or CERT_CER_URL+CERT_KEY_URL")
+        # Validate certificate configuration
+        local has_p12_url=false
+        local has_cer_key_urls=false
+        
+        if [[ -n "${CERT_P12_URL:-}" ]] && [[ "${CERT_P12_URL}" == http* ]]; then
+            has_p12_url=true
+        fi
+        
+        if [[ -n "${CERT_CER_URL:-}" ]] && [[ -n "${CERT_KEY_URL:-}" ]] && [[ "${CERT_CER_URL}" == http* ]] && [[ "${CERT_KEY_URL}" == http* ]]; then
+            has_cer_key_urls=true
+        fi
+        
+        if [[ "$has_p12_url" == "false" ]] && [[ "$has_cer_key_urls" == "false" ]]; then
+            missing_vars+=("CERT_P12_URL (with http/https URL) or CERT_CER_URL+CERT_KEY_URL (with http/https URLs)")
+        fi
+        
+        # Validate password is provided for either option
+        if [[ -z "${CERT_PASSWORD:-}" ]]; then
+            missing_vars+=("CERT_PASSWORD")
         fi
     fi
     
@@ -99,8 +116,8 @@ validate_environment_variables() {
     if [[ "${WORKFLOW_ID}" == "auto-ios-workflow" ]] && [[ "${PROFILE_URL:-}" == "auto-generated" ]]; then
         log "🔐 Auto-ios-workflow detected with auto-generated certificates - skipping profile validation"
     else
-        if [[ -z "${PROFILE_URL:-}" ]]; then
-            missing_vars+=("PROFILE_URL")
+        if [[ -z "${PROFILE_URL:-}" ]] || [[ "${PROFILE_URL}" != http* ]]; then
+            missing_vars+=("PROFILE_URL (with http/https URL)")
         fi
     fi
     
@@ -402,9 +419,9 @@ log "🔐 Setting up iOS Code Signing..."
 # Ensure certificates directory exists
 mkdir -p ios/certificates
 
-# Download certificate files
-if [ -n "${CERT_P12_URL:-}" ]; then
-    log "🔐 Downloading P12 certificate..."
+# Certificate handling logic
+if [ -n "${CERT_P12_URL:-}" ] && [[ "${CERT_P12_URL}" == http* ]]; then
+    log "🔐 Option 1: Downloading P12 certificate from URL..."
     log "🔍 P12 URL: ${CERT_P12_URL}"
     
     if curl -L --fail --silent --show-error --output "ios/certificates/cert.p12" "${CERT_P12_URL}"; then
@@ -427,15 +444,185 @@ if [ -n "${CERT_P12_URL:-}" ]; then
         else
             log "✅ Downloaded file appears to be a valid P12 certificate"
         fi
+        
+        # Validate password is provided
+        if [ -z "${CERT_PASSWORD:-}" ]; then
+            log "❌ CERT_PASSWORD is required when using CERT_P12_URL"
+            exit 1
+        fi
+        log "✅ P12 certificate and password are ready for import"
+        
     else
         log "❌ Failed to download P12 certificate"
         log "🔍 Curl error details:"
         curl -L --show-error --output /dev/null "${CERT_P12_URL}" 2>&1 || true
         exit 1
     fi
+    
+elif [ -n "${CERT_CER_URL:-}" ] && [ -n "${CERT_KEY_URL:-}" ] && [[ "${CERT_CER_URL}" == http* ]] && [[ "${CERT_KEY_URL}" == http* ]]; then
+    log "🔐 Option 2: Downloading CER and KEY files to generate P12..."
+    log "🔍 CER URL: ${CERT_CER_URL}"
+    log "🔍 KEY URL: ${CERT_KEY_URL}"
+    
+    # Validate password is provided
+    if [ -z "${CERT_PASSWORD:-}" ]; then
+        log "❌ CERT_PASSWORD is required when using CERT_CER_URL and CERT_KEY_URL"
+        exit 1
+    fi
+    
+    # Download CER file
+    log "📥 Downloading certificate (.cer) file..."
+    if curl -L --fail --silent --show-error --output "ios/certificates/cert.cer" "${CERT_CER_URL}"; then
+        log "✅ Certificate (.cer) downloaded successfully"
+        log "🔍 CER file size: $(ls -lh ios/certificates/cert.cer | awk '{print $5}')"
+    else
+        log "❌ Failed to download certificate (.cer) file"
+        log "🔍 Curl error details:"
+        curl -L --show-error --output /dev/null "${CERT_CER_URL}" 2>&1 || true
+        exit 1
+    fi
+    
+    # Download KEY file
+    log "📥 Downloading private key (.key) file..."
+    if curl -L --fail --silent --show-error --output "ios/certificates/cert.key" "${CERT_KEY_URL}"; then
+        log "✅ Private key (.key) downloaded successfully"
+        log "🔍 KEY file size: $(ls -lh ios/certificates/cert.key | awk '{print $5}')"
+    else
+        log "❌ Failed to download private key (.key) file"
+        log "🔍 Curl error details:"
+        curl -L --show-error --output /dev/null "${CERT_KEY_URL}" 2>&1 || true
+        exit 1
+    fi
+    
+    # Verify downloaded files
+    log "🔍 Verifying downloaded certificate files..."
+    if [ -s "ios/certificates/cert.cer" ] && [ -s "ios/certificates/cert.key" ]; then
+        log "✅ Certificate files are not empty"
+    else
+        log "❌ Certificate files are empty"
+        exit 1
+    fi
+    
+    # Convert CER to PEM
+    log "🔄 Converting certificate to PEM format..."
+    if openssl x509 -in ios/certificates/cert.cer -inform DER -out ios/certificates/cert.pem -outform PEM; then
+        log "✅ Certificate converted to PEM"
+    else
+        log "❌ Failed to convert certificate to PEM"
+        exit 1
+    fi
+    
+    # Verify PEM and KEY files before P12 generation
+    log "🔍 Verifying PEM and KEY files before P12 generation..."
+    if [ ! -f "ios/certificates/cert.pem" ] || [ ! -f "ios/certificates/cert.key" ]; then
+        log "❌ PEM or KEY file missing"
+        log "   PEM exists: $([ -f ios/certificates/cert.pem ] && echo 'yes' || echo 'no')"
+        log "   KEY exists: $([ -f ios/certificates/cert.key ] && echo 'yes' || echo 'no')"
+        exit 1
+    fi
+    
+    # Check PEM file content
+    if openssl x509 -in ios/certificates/cert.pem -text -noout >/dev/null 2>&1; then
+        log "✅ PEM file is valid certificate"
+    else
+        log "❌ PEM file is not a valid certificate"
+        exit 1
+    fi
+    
+    # Check KEY file content
+    if openssl rsa -in ios/certificates/cert.key -check -noout >/dev/null 2>&1; then
+        log "✅ KEY file is valid private key"
+    else
+        log "❌ KEY file is not a valid private key"
+        exit 1
+    fi
+    
+    # Generate P12 with password
+    log "🔍 Generating P12 certificate with password..."
+    if openssl pkcs12 -export \
+        -inkey ios/certificates/cert.key \
+        -in ios/certificates/cert.pem \
+        -out ios/certificates/cert.p12 \
+        -password "pass:${CERT_PASSWORD}" \
+        -name "iOS Distribution Certificate" \
+        -legacy; then
+        log "✅ P12 certificate generated successfully"
+        
+        # Verify the generated P12 with password
+        log "🔍 Verifying generated P12 file with password..."
+        if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:${CERT_PASSWORD}" -legacy 2>/dev/null; then
+            log "✅ Generated P12 verification successful"
+            log "🔍 P12 file size: $(ls -lh ios/certificates/cert.p12 | awk '{print $5}')"
+        else
+            log "❌ Generated P12 verification failed"
+            exit 1
+        fi
+    else
+        log "❌ Failed to generate P12 certificate"
+        exit 1
+    fi
+    
 else
-    log "🔐 CERT_P12_URL not provided, certificate generation will be handled by code_signing.sh"
-    log "📋 Using CERT_CER_URL and CERT_KEY_URL for certificate generation"
+    log "❌ Certificate configuration error"
+    log "🔍 Available certificate variables:"
+    log "   CERT_P12_URL: ${CERT_P12_URL:-not_set}"
+    log "   CERT_CER_URL: ${CERT_CER_URL:-not_set}"
+    log "   CERT_KEY_URL: ${CERT_KEY_URL:-not_set}"
+    log "   CERT_PASSWORD: ${CERT_PASSWORD:+set}"
+    
+    log "❌ Required configuration:"
+    log "   Option 1: CERT_P12_URL (with http/https URL) + CERT_PASSWORD"
+    log "   Option 2: CERT_CER_URL (with http/https URL) + CERT_KEY_URL (with http/https URL) + CERT_PASSWORD"
+    log "   Neither option is properly configured"
+    exit 1
+fi
+
+# Download provisioning profile
+log "📋 Downloading provisioning profile..."
+if [ -n "${PROFILE_URL:-}" ] && [[ "${PROFILE_URL}" == http* ]]; then
+    log "🔍 Profile URL: ${PROFILE_URL}"
+    
+    if curl -L --fail --silent --show-error --output "ios/certificates/profile.mobileprovision" "${PROFILE_URL}"; then
+        log "✅ Provisioning profile downloaded successfully"
+        log "🔍 Profile file size: $(ls -lh ios/certificates/profile.mobileprovision | awk '{print $5}')"
+        
+        # Verify the profile file
+        log "🔍 Verifying provisioning profile..."
+        if security cms -D -i ios/certificates/profile.mobileprovision >/dev/null 2>&1; then
+            log "✅ Provisioning profile is valid"
+            
+            # Extract profile information for debugging
+            log "🔍 Profile information:"
+            # shellcheck disable=SC2168
+            local profile_name=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Name raw - 2>/dev/null || echo "unknown")
+            # shellcheck disable=SC2168
+            local profile_uuid=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract UUID raw - 2>/dev/null || echo "unknown")
+            # shellcheck disable=SC2168
+            local profile_type=$(security cms -D -i ios/certificates/profile.mobileprovision 2>/dev/null | plutil -extract Entitlements.get-task-allow raw - 2>/dev/null | grep -q "true" && echo "development" || echo "distribution")
+            
+            log "   Name: ${profile_name}"
+            log "   UUID: ${profile_uuid}"
+            log "   Type: ${profile_type}"
+            
+            # Export profile information for other scripts
+            echo "PROFILE_NAME=${profile_name}" >> "$CM_ENV"
+            echo "PROFILE_UUID=${profile_uuid}" >> "$CM_ENV"
+            echo "PROFILE_TYPE=${profile_type}" >> "$CM_ENV"
+            
+        else
+            log "❌ Invalid provisioning profile downloaded"
+            exit 1
+        fi
+    else
+        log "❌ Failed to download provisioning profile"
+        log "🔍 Curl error details:"
+        curl -L --show-error --output /dev/null "${PROFILE_URL}" 2>&1 || true
+        exit 1
+    fi
+else
+    log "❌ PROFILE_URL not provided or not a valid URL"
+    log "🔍 PROFILE_URL: ${PROFILE_URL:-not_set}"
+    exit 1
 fi
 
 # ⚙️ iOS Project Configuration

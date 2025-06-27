@@ -311,167 +311,49 @@ setup_keychain_and_certificates() {
         return 1
     else
         log "❌ Certificate file not found: ios/certificates/cert.p12"
-        log "🔍 Checking for CER/KEY files to generate P12..."
+        log "🔍 Certificate file should have been prepared by main.sh"
+        log "🔍 Checking if certificate generation failed in main.sh..."
         
-        # Check if we have CER and KEY files to generate P12
-        if [ -n "${CERT_CER_URL:-}" ] && [ -n "${CERT_KEY_URL:-}" ]; then
-            log "🔐 CERT_P12_URL not provided, generating P12 from CER/KEY files..."
+        # Check if we have CER and KEY files that might have failed to generate P12
+        if [ -f "ios/certificates/cert.cer" ] && [ -f "ios/certificates/cert.key" ]; then
+            log "⚠️ Found CER and KEY files but P12 generation failed"
+            log "🔧 Attempting P12 generation as fallback..."
             
-            # Check if this is auto-ios-workflow with auto-generated certificates
-            if [[ "${WORKFLOW_ID:-}" == "auto-ios-workflow" ]] && [[ "${CERT_CER_URL}" == "auto-generated" ]]; then
-                log "🔐 Auto-ios-workflow detected with auto-generated certificates"
-                log "📋 Skipping manual certificate download - using fastlane-generated certificates"
-                log "✅ Certificate setup handled by auto-ios-workflow"
-                return 0
-            fi
-            
-            # Download CER and KEY files
-            log "🔐 Downloading Certificate and Key..."
-            log "🔍 CER URL: ${CERT_CER_URL}"
-            log "🔍 KEY URL: ${CERT_KEY_URL}"
-            log "🔍 Using CERT_PASSWORD for P12 generation"
-            
-            # Ensure certificates directory exists
-            mkdir -p ios/certificates
-            
-            if curl -L --fail --silent --show-error --output "ios/certificates/cert.cer" "${CERT_CER_URL}"; then
-                log "✅ Certificate downloaded successfully"
-            else
-                log "❌ Failed to download certificate"
-                return 1
-            fi
-            
-            if curl -L --fail --silent --show-error --output "ios/certificates/cert.key" "${CERT_KEY_URL}"; then
-                log "✅ Private key downloaded successfully"
-            else
-                log "❌ Failed to download private key"
-                return 1
-            fi
-            
-            # Verify downloaded files
-            log "🔍 Verifying downloaded certificate files..."
-            if [ -s "ios/certificates/cert.cer" ] && [ -s "ios/certificates/cert.key" ]; then
-                log "✅ Certificate files are not empty"
-            else
-                log "❌ Certificate files are empty"
-                return 1
-            fi
-            
-            # Convert CER to PEM
-            log "🔄 Converting certificate to PEM format..."
-            if openssl x509 -in ios/certificates/cert.cer -inform DER -out ios/certificates/cert.pem -outform PEM; then
-                log "✅ Certificate converted to PEM"
-            else
-                log "❌ Failed to convert certificate to PEM"
-                return 1
-            fi
-            
-            # Generate P12 with compatible password handling
-            # Verify PEM and KEY files before P12 generation
-            log "🔍 Verifying PEM and KEY files before P12 generation..."
-            if [ ! -f "ios/certificates/cert.pem" ] || [ ! -f "ios/certificates/cert.key" ]; then
-                log "❌ PEM or KEY file missing"
-                log "   PEM exists: $([ -f ios/certificates/cert.pem ] && echo 'yes' || echo 'no')"
-                log "   KEY exists: $([ -f ios/certificates/cert.key ] && echo 'yes' || echo 'no')"
-                return 1
-            fi
-            
-            # Check PEM file content
-            if openssl x509 -in ios/certificates/cert.pem -text -noout >/dev/null 2>&1; then
-                log "✅ PEM file is valid certificate"
-            else
-                log "❌ PEM file is not a valid certificate"
-                return 1
-            fi
-            
-            # Check KEY file content
-            if openssl rsa -in ios/certificates/cert.key -check -noout >/dev/null 2>&1; then
-                log "✅ KEY file is valid private key"
-            else
-                log "❌ KEY file is not a valid private key"
-                return 1
-            fi
-            
-            log "🔍 Attempting P12 generation with CERT_PASSWORD..."
-            if openssl pkcs12 -export \
-                -inkey ios/certificates/cert.key \
-                -in ios/certificates/cert.pem \
-                -out ios/certificates/cert.p12 \
-                -password "pass:${CERT_PASSWORD}" \
-                -name "iOS Distribution Certificate" \
-                -legacy; then
-                log "✅ P12 certificate generated successfully (with password)"
-                
-                # Verify the generated P12 with password
-                log "🔍 Verifying generated P12 file with password..."
-                if openssl pkcs12 -in ios/certificates/cert.p12 -noout -passin "pass:${CERT_PASSWORD}" -legacy 2>/dev/null; then
-                    log "✅ Generated P12 verification successful (with password)"
-                    log "🔍 P12 file size: $(ls -lh ios/certificates/cert.p12 | awk '{print $5}')"
+            # Check if PEM file exists
+            if [ ! -f "ios/certificates/cert.pem" ]; then
+                log "🔄 Converting certificate to PEM format..."
+                if openssl x509 -in ios/certificates/cert.cer -inform DER -out ios/certificates/cert.pem -outform PEM; then
+                    log "✅ Certificate converted to PEM"
                 else
-                    log "⚠️ P12 verification with password failed, trying without password..."
-                    
-                    # Try generating without password as fallback
-                    if openssl pkcs12 -export \
-                        -inkey ios/certificates/cert.key \
-                        -in ios/certificates/cert.pem \
-                        -out ios/certificates/cert.p12 \
-                        -password "pass:" \
-                        -name "iOS Distribution Certificate" \
-                        -legacy; then
-                        log "✅ P12 certificate generated successfully (no password)"
-                        
-                        # Verify the generated P12 without password
-                        log "🔍 Verifying generated P12 file without password..."
-                        if openssl pkcs12 -in ios/certificates/cert.p12 -noout -legacy 2>/dev/null; then
-                            log "✅ Generated P12 verification successful (no password)"
-                            log "🔍 P12 file size: $(ls -lh ios/certificates/cert.p12 | awk '{print $5}')"
-                        else
-                            log "❌ Generated P12 verification failed (no password)"
-                            log "🔍 Attempting to debug P12 file..."
-                            file ios/certificates/cert.p12
-                            log "🔍 P12 file content (first 100 chars):"
-                            head -c 100 ios/certificates/cert.p12 | xxd
-                            return 1
-                        fi
-                    else
-                        log "❌ Failed to generate P12 certificate (both with and without password)"
-                        return 1
-                    fi
+                    log "❌ Failed to convert certificate to PEM"
+                    return 1
                 fi
-                
-                # Now import the generated P12 file
-                log "📜 Importing generated P12 certificate..."
-                if [ -n "$CERT_PASSWORD" ]; then
-                    if security import ios/certificates/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/xcodebuild -A; then
-                        log "✅ Generated P12 certificate imported successfully"
-                        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-                        sleep 1
-                        return 0
-                    fi
+            fi
+            
+            # Generate P12 with password
+            if [ -n "${CERT_PASSWORD:-}" ]; then
+                log "🔍 Attempting P12 generation with CERT_PASSWORD..."
+                if openssl pkcs12 -export \
+                    -inkey ios/certificates/cert.key \
+                    -in ios/certificates/cert.pem \
+                    -out ios/certificates/cert.p12 \
+                    -password "pass:${CERT_PASSWORD}" \
+                    -name "iOS Distribution Certificate" \
+                    -legacy; then
+                    log "✅ P12 certificate generated successfully (fallback)"
                 else
-                    if security import ios/certificates/cert.p12 -k build.keychain -A; then
-                        log "✅ Generated P12 certificate imported successfully (no password)"
-                        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-                        sleep 1
-                        return 0
-                    fi
+                    log "❌ Failed to generate P12 certificate (fallback)"
+                    return 1
                 fi
-                
-                log "❌ Failed to import generated P12 certificate"
-                return 1
             else
-                log "❌ Failed to generate P12 certificate with password"
-                log "🔍 Debug info:"
-                log "   CERT_PASSWORD length: ${#CERT_PASSWORD}"
-                log "   CERT_PASSWORD starts with: ${CERT_PASSWORD:0:3}***"
-                log "   PEM file exists: $([ -f ios/certificates/cert.pem ] && echo 'yes' || echo 'no')"
-                log "   KEY file exists: $([ -f ios/certificates/cert.key ] && echo 'yes' || echo 'no')"
+                log "❌ CERT_PASSWORD not available for P12 generation"
                 return 1
             fi
         else
-            log "❌ No certificate URLs provided (CERT_CER_URL and CERT_KEY_URL required when CERT_P12_URL is not provided)"
-            log "🔍 Available files in certificates directory:"
+            log "❌ No certificate files found"
+            log "🔍 Available files in ios/certificates/:"
             ls -la ios/certificates/ 2>/dev/null || log "   Directory not accessible"
+            log "❌ Certificate setup should be handled by main.sh"
             return 1
         fi
     fi
