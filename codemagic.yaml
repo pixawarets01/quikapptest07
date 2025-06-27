@@ -3363,7 +3363,7 @@ workflows:
               --dart-define=BOTTOMMENU_FONT_ITALIC="$BOTTOMMENU_FONT_ITALIC" \
               --dart-define=BOTTOMMENU_ACTIVE_TAB_COLOR="$BOTTOMMENU_ACTIVE_TAB_COLOR" \
               --dart-define=BOTTOMMENU_ICON_POSITION="$BOTTOMMENU_ICON_POSITION" \
-              --dart-define=IS_DEEPLINK="$IS_DEEPLINK" \
+              --dart-define=IS_DOMAIN_URL="$IS_DOMAIN_URL" \
               --dart-define=IS_LOAD_IND="$IS_LOAD_IND" \
               --dart-define=IS_CAMERA="$IS_CAMERA" \
               --dart-define=IS_LOCATION="$IS_LOCATION" \
