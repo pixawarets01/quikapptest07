@@ -115,7 +115,7 @@ scripts:
         echo "IS_NOTIFICATION: $IS_NOTIFICATION"
         echo "IS_CONTACT: $IS_CONTACT"
         echo "IS_BIOMETRIC: $IS_BIOMETRIC"
-        echo "IS_CALENDAR: $IS_CALENDAR"
+        echo "IS_CALENDAR: $IS_CALENDAR
 
         echo "*********** Publish Configuration ***********" 
         echo "EMAIL_ID: $EMAIL_ID"
@@ -1384,8 +1384,7 @@ scripts:
             # ExportOptions.plist
             cat <<EOF > ExportOptions.plist
             <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
             <key>method</key>
@@ -3489,69 +3488,6 @@ workflows:
           end
           EOF
 
-      - name: Generate ExportOptions Build
-        script: |
-          echo "📥 Loading environment from $CM_ENV"
-          set -a
-          source "$CM_ENV"
-          set +a
-          
-          echo "✅ Creating ExportOptions.plist:"
-          echo "🔍 Certificate Identity: $CODE_SIGN_IDENTITY"
-          echo "🔍 Certificate Name: $CERT_NAME"
-          echo "🔍 Team ID: $APPLE_TEAM_ID"
-          echo "🔍 Bundle ID: $BUNDLE_ID"
-          echo "🔍 Profile Name: $PROFILE_NAME"
-          
-          # Use the actual certificate name if available, otherwise fallback to Apple Distribution
-          SIGNING_CERT="${CERT_NAME:-Apple Distribution}"
-          echo "🔍 Using signing certificate: $SIGNING_CERT"
-          
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>teamID</key>
-            <string>$APPLE_TEAM_ID</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>$BUNDLE_ID</key>
-              <string>$PROFILE_NAME</string>
-            </dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>signingCertificate</key>
-            <string>$SIGNING_CERT</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <false/>
-            <key>thinning</key>
-            <string>&lt;none&gt;</string>
-            <key>distributionBundleIdentifier</key>
-            <string>$BUNDLE_ID</string>
-            <key>generateAppStoreInformation</key>
-            <false/>
-            <key>manageVersionAndBuildNumber</key>
-            <false/>
-            <key>embedOnDemandResourcesProvisioningProfiles</key>
-            <false/>
-            <key>skipProvisioningProfiles</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-          
-          echo "📋 ExportOptions.plist created:"
-          cat ExportOptions.plist
-
       - name: Flutter IPA Build
         script: |
           flutter build ios --release \
@@ -3667,42 +3603,9 @@ workflows:
           echo "🔍 Archive path: $CM_BUILD_DIR/Runner.xcarchive"
           echo "🔍 Export path: $CM_BUILD_DIR/ios_output"
           
-          # Create export directory
-          mkdir -p "$CM_BUILD_DIR/ios_output"
-          
-          # Export with detailed logging and framework handling
-          echo "🔧 Starting export with framework provisioning profile handling..."
-          
-          # First attempt with standard export
-          if xcodebuild -exportArchive \
-            -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
-            -exportPath "$CM_BUILD_DIR/ios_output" \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates \
-            -verbose 2>&1 | tee export.log; then
-            
-            echo "✅ Export completed successfully!"
-          else
-            echo "⚠️ Standard export failed, checking for framework warnings..."
-            
-            # Check if the failure is due to framework provisioning profiles
-            if grep -q "does not support provisioning profiles" export.log; then
-              echo "🔧 Framework provisioning profile warnings detected, retrying with modified approach..."
-              
-              # Try export with additional flags to handle framework signing
-              xcodebuild -exportArchive \
-                -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
-                -exportPath "$CM_BUILD_DIR/ios_output" \
-                -exportOptionsPlist ExportOptions.plist \
-                -allowProvisioningUpdates \
-                -allowProvisioningDeviceRegistration \
-                -verbose 2>&1 | tee export_retry.log || true
-            else
-              echo "❌ Export failed for reasons other than framework provisioning profiles"
-              cat export.log
-              exit 1
-            fi
-          fi
+          # Make the export fix script executable and run it
+          chmod +x lib/scripts/utils/fix_ios_export.sh
+          ./lib/scripts/utils/fix_ios_export.sh
           
           echo "Contents of output directory:"
           ls -lh "$CM_BUILD_DIR/ios_output" || echo "Directory not found"
@@ -3714,10 +3617,7 @@ workflows:
             echo "❌ IPA file was not generated!"
             echo "🔍 Checking for any generated files:"
             find "$CM_BUILD_DIR/ios_output" -type f 2>/dev/null || echo "No files found"
-            echo "📋 Export logs:"
-            cat export.log 2>/dev/null || echo "No export log found"
-            cat export_retry.log 2>/dev/null || echo "No retry log found"
-            exit 0
+            exit 1
           fi
 
       - name: Upload to TestFlight
