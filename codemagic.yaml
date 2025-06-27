@@ -20,8 +20,8 @@ environment:
       SPLASH_DURATION: $SPLASH_DURATION
       LOGO_URL: $LOGO_URL
       WEB_URL: $WEB_URL
-      FIREBASE_CONFIG_ANDROID: $FIREBASE_CONFIG_ANDROID
-      FIREBASE_CONFIG_IOS: $FIREBASE_CONFIG_IOS
+      firebase_config_android: $firebase_config_android
+      firebase_config_ios: $firebase_config_ios
       APNS_KEY_ID: $APNS_KEY_ID
       APPLE_TEAM_ID: $APPLE_TEAM_ID
       APNS_AUTH_KEY_URL: $APNS_AUTH_KEY_URL
