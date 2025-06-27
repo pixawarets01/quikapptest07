@@ -1,64 +1,4 @@
 # 🚀 Common Variables Block - Shared across all workflows
-environment:
-  app_details:
-    vars:
-      VERSION_NAME: $VERSION_NAME
-      VERSION_CODE: $VERSION_CODE
-      KEY_STORE: $KEY_STORE
-      CM_KEYSTORE_PASSWORD: $CM_KEYSTORE_PASSWORD
-      CM_KEY_ALIAS: $CM_KEY_ALIAS
-      CM_KEY_PASSWORD: $CM_KEY_PASSWORD
-      APP_NAME: $APP_NAME
-      ORG_NAME: $ORG_NAME
-      IS_SPLASH: $IS_SPLASH
-      SPLASH_URL: $SPLASH_URL
-      SPLASH_BG_URL: $SPLASH_BG_URL
-      SPLASH_BG_COLOR: $SPLASH_BG_COLOR
-      SPLASH_TAGLINE: $SPLASH_TAGLINE
-      SPLASH_TAGLINE_COLOR: $SPLASH_TAGLINE_COLOR
-      SPLASH_ANIMATION: $SPLASH_ANIMATION
-      SPLASH_DURATION: $SPLASH_DURATION
-      LOGO_URL: $LOGO_URL
-      WEB_URL: $WEB_URL
-      firebase_config_android: $firebase_config_android
-      firebase_config_ios: $firebase_config_ios
-      APNS_KEY_ID: $APNS_KEY_ID
-      APPLE_TEAM_ID: $APPLE_TEAM_ID
-      APNS_AUTH_KEY_URL: $APNS_AUTH_KEY_URL
-      APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-      APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-      APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-      CERT_URL: $CERT_URL
-      CERT_PASSWORD: $CERT_PASSWORD
-      PROFILE_URL: $PROFILE_URL
-      PKG_NAME: $PKG_NAME
-      BUNDLE_ID: $BUNDLE_ID
-      EMAIL_ID: $EMAIL_ID
-      PUSH_NOTIFY: $PUSH_NOTIFY
-      IS_CAMERA: $IS_CAMERA
-      IS_LOCATION: $IS_LOCATION
-      IS_MIC: $IS_MIC
-      IS_NOTIFICATION: $IS_NOTIFICATION
-      IS_CONTACT: $IS_CONTACT
-      IS_BIOMETRIC: $IS_BIOMETRIC
-      IS_CALENDAR: $IS_CALENDAR
-      IS_STORAGE: "true" # Always true by default
-      IS_PULLDOWN: $IS_PULLDOWN
-      IS_BOTTOMMENU: $IS_BOTTOMMENU
-      IS_CHATBOT: $IS_CHATBOT
-      BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS
-      BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR
-      BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR
-      BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR
-      BOTTOMMENU_FONT: $BOTTOMMENU_FONT
-      BOTTOMMENU_FONT_SIZE: $BOTTOMMENU_FONT_SIZE
-      BOTTOMMENU_FONT_BOLD: $BOTTOMMENU_FONT_BOLD
-      BOTTOMMENU_FONT_ITALIC: $BOTTOMMENU_FONT_ITALIC
-      BOTTOMMENU_ACTIVE_TAB_COLOR: $BOTTOMMENU_ACTIVE_TAB_COLOR
-      BOTTOMMENU_ICON_POSITION: $BOTTOMMENU_ICON_POSITION
-      BOTTOMMENU_VISIBLE_ON: $BOTTOMMENU_VISIBLE_ON
-      IS_DEEPLINK: $IS_DEEPLINK
-      IS_LOAD_IND: $IS_LOAD_IND
 common_vars: &common_vars # 🚀 Enhanced Build Success Rate Optimizations
   GRADLE_OPTS: "-Xmx12G -XX:MaxMetaspaceSize=3G -XX:ReservedCodeCacheSize=1G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:+OptimizeStringConcat -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
   XCODE_PARALLEL_JOBS: "8"
@@ -147,8 +87,8 @@ scripts:
         echo "FIREBASE_CONFIG_IOS: $FIREBASE_CONFIG_IOS"
 
         echo "*********** Splash Configuration ***********"
-        echo "SPLASH_URL: $SPLASH_URL"
-        echo "SPLASH_BG_URL:$SPLASH_BG_URL"
+        echo "SPLASH: $SPLASH"
+        echo "SPLASH_BG:$SPLASH_BG"
         echo "SPLASH_BG_COLOR: $SPLASH_BG_COLOR"
         echo "SPLASH_TAGLINE: $SPLASH_TAGLINE"
         echo "SPLASH_TAGLINE_COLOR: $SPLASH_TAGLINE_COLOR"
@@ -196,11 +136,11 @@ scripts:
           mkdir -p assets/images/
 
           # Download splash logo
-          echo "⬇️ Downloading splash logo from: $SPLASH_URL"
-          wget -O assets/images/splash.png "$SPLASH_URL"
+          echo "⬇️ Downloading splash logo from: $SPLASH"
+          wget -O assets/images/splash.png "$SPLASH"
           if [ $? -ne 0 ]; then
             echo "⚠️ Certificate issue or download failed. Retrying with --no-check-certificate..."
-            wget --no-check-certificate -O assets/images/splash.png "$SPLASH_URL"
+            wget --no-check-certificate -O assets/images/splash.png "$SPLASH"
           fi
 
           if [ ! -f assets/images/splash.png ]; then
@@ -209,12 +149,12 @@ scripts:
           fi
 
           # Download splash background (optional)
-          if [ -n "$SPLASH_BG_URL" ]; then
-            echo "⬇️ Downloading splash background from: $SPLASH_BG_URL"
-            wget -O assets/images/splash_bg.png "$SPLASH_BG_URL"
+          if [ -n "$SPLASH_BG" ]; then
+            echo "⬇️ Downloading splash background from: $SPLASH_BG"
+            wget -O assets/images/splash_bg.png "$SPLASH_BG"
             if [ $? -ne 0 ]; then
               echo "⚠️ Certificate issue or download failed. Retrying with --no-check-certificate..."
-              wget --no-check-certificate -O assets/images/splash_bg.png "$SPLASH_BG_URL"
+              wget --no-check-certificate -O assets/images/splash_bg.png "$SPLASH_BG"
             fi
 
             if [ ! -f assets/images/splash_bg.png ]; then
@@ -812,8 +752,8 @@ scripts:
         --dart-define=VERSION_CODE="$VERSION_CODE" \
         --dart-define=EMAIL_ID="$EMAIL_ID" \
         --dart-define=IS_SPLASH="$IS_SPLASH" \
-        --dart-define=SPLASH_URL="$SPLASH_URL" \
-        --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+        --dart-define=SPLASH="$SPLASH" \
+        --dart-define=SPLASH_BG="$SPLASH_BG" \
         --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
         --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
         --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
@@ -908,8 +848,8 @@ scripts:
             --dart-define=VERSION_CODE="$VERSION_CODE" \
             --dart-define=EMAIL_ID="$EMAIL_ID" \
             --dart-define=IS_SPLASH="$IS_SPLASH" \
-            --dart-define=SPLASH_URL="$SPLASH_URL" \
-            --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+            --dart-define=SPLASH="$SPLASH" \
+            --dart-define=SPLASH_BG="$SPLASH_BG" \
             --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
             --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
             --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
@@ -971,8 +911,8 @@ scripts:
             --dart-define=VERSION_CODE="$VERSION_CODE" \
             --dart-define=EMAIL_ID="$EMAIL_ID" \
             --dart-define=IS_SPLASH="$IS_SPLASH" \
-            --dart-define=SPLASH_URL="$SPLASH_URL" \
-            --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+            --dart-define=SPLASH="$SPLASH" \
+            --dart-define=SPLASH_BG="$SPLASH_BG" \
             --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
             --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
             --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
@@ -1030,8 +970,8 @@ scripts:
             --dart-define=VERSION_CODE="$VERSION_CODE" \
             --dart-define=EMAIL_ID="$EMAIL_ID" \
             --dart-define=IS_SPLASH="$IS_SPLASH" \
-            --dart-define=SPLASH_URL="$SPLASH_URL" \
-            --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+            --dart-define=SPLASH="$SPLASH" \
+            --dart-define=SPLASH_BG="$SPLASH_BG" \
             --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
             --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
             --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
@@ -1352,8 +1292,8 @@ scripts:
           --dart-define=VERSION_CODE="$VERSION_CODE" \
           --dart-define=EMAIL_ID="$EMAIL_ID" \
           --dart-define=IS_SPLASH="$IS_SPLASH" \
-          --dart-define=SPLASH_URL="$SPLASH_URL" \
-          --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+          --dart-define=SPLASH="$SPLASH" \
+          --dart-define=SPLASH_BG="$SPLASH_BG" \
           --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
           --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
           --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
@@ -3343,8 +3283,8 @@ workflows:
               --dart-define=VERSION_CODE="$VERSION_CODE" \
               --dart-define=EMAIL_ID="$EMAIL_ID" \
               --dart-define=IS_SPLASH="$IS_SPLASH" \
-              --dart-define=SPLASH_URL="$SPLASH_URL" \
-              --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
+              --dart-define=SPLASH="$SPLASH" \
+              --dart-define=SPLASH_BG="$SPLASH_BG" \
               --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
               --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
               --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
