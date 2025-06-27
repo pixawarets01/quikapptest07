@@ -74,12 +74,96 @@ post_install do |installer|
       # Additional fixes for Firebase
       config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
       config.build_settings['SWIFT_VERSION'] = '5.0'
+      
+      # Fix Flutter header search paths
+      config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/include'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/Headers/Public'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/Headers/Public/*'
+      
+      # Fix framework search paths
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/Frameworks'
+      
+      # Fix library search paths
+      config.build_settings['LIBRARY_SEARCH_PATHS'] ||= ['$(inherited)']
+      config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/Libraries'
     end
   end
 end
 EOF
     
     success "Podfile updated with Swift compiler fixes"
+}
+
+# Function to fix Flutter xcconfig files
+fix_flutter_xcconfig() {
+    log "🔧 Fixing Flutter xcconfig files..."
+    
+    cd ios/Flutter
+    
+    # Fix Release.xcconfig
+    if [[ -f "Release.xcconfig" ]]; then
+        # Ensure Pods configuration is included
+        if ! grep -q "Pods-Runner.release.xcconfig" "Release.xcconfig"; then
+            echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig\"" >> "Release.xcconfig"
+        fi
+        
+        # Add Flutter header search paths
+        if ! grep -q "HEADER_SEARCH_PATHS" "Release.xcconfig"; then
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Release.xcconfig"
+        fi
+    fi
+    
+    # Fix Debug.xcconfig
+    if [[ -f "Debug.xcconfig" ]]; then
+        # Ensure Pods configuration is included
+        if ! grep -q "Pods-Runner.debug.xcconfig" "Debug.xcconfig"; then
+            echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig\"" >> "Debug.xcconfig"
+        fi
+        
+        # Add Flutter header search paths
+        if ! grep -q "HEADER_SEARCH_PATHS" "Debug.xcconfig"; then
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Debug.xcconfig"
+        fi
+    fi
+    
+    # Fix Profile.xcconfig
+    if [[ -f "Profile.xcconfig" ]]; then
+        # Ensure Pods configuration is included
+        if ! grep -q "Pods-Runner.profile.xcconfig" "Profile.xcconfig"; then
+            echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig\"" >> "Profile.xcconfig"
+        fi
+        
+        # Add Flutter header search paths
+        if ! grep -q "HEADER_SEARCH_PATHS" "Profile.xcconfig"; then
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Profile.xcconfig"
+        fi
+    fi
+    
+    cd ../..
+    success "Flutter xcconfig files updated"
+}
+
+# Function to fix Xcode project configuration
+fix_xcode_project() {
+    log "🔧 Applying Xcode project fixes..."
+    
+    cd ios
+    
+    # Update project.pbxproj with Swift compiler flags and header search paths
+    if [[ -f "Runner.xcodeproj/project.pbxproj" ]]; then
+        # Add Swift compiler flags to the project
+        sed -i '' 's/SWIFT_VERSION = 5.0;/SWIFT_VERSION = 5.0;\n\t\t\t\tOTHER_SWIFT_FLAGS = ("-enable-experimental-feature", "AccessLevelOnImport");/g' Runner.xcodeproj/project.pbxproj
+        
+        # Add header search paths
+        sed -i '' 's/HEADER_SEARCH_PATHS = (/HEADER_SEARCH_PATHS = (\n\t\t\t\t\t"$(PODS_ROOT)\/..\/.symlinks\/plugins\/*\/ios\/Classes",\n\t\t\t\t\t"$(PODS_ROOT)\/..\/.symlinks\/plugins\/*\/ios\/include",/g' Runner.xcodeproj/project.pbxproj
+        
+        success "Xcode project updated with Swift compiler flags and header search paths"
+    fi
+    
+    cd ..
 }
 
 # Function to clean and reinstall pods
@@ -93,6 +177,11 @@ clean_and_reinstall_pods() {
     rm -rf ~/Library/Caches/CocoaPods
     rm -rf ~/.cocoapods/repos
     
+    # Clean Flutter build cache
+    cd ..
+    flutter clean
+    cd ios
+    
     # Install pods with repo update
     if pod install --repo-update; then
         success "CocoaPods installed successfully"
@@ -104,21 +193,21 @@ clean_and_reinstall_pods() {
     cd ..
 }
 
-# Function to apply Xcode project fixes
-fix_xcode_project() {
-    log "🔧 Applying Xcode project fixes..."
+# Function to verify Flutter setup
+verify_flutter_setup() {
+    log "🔍 Verifying Flutter setup..."
     
-    cd ios
-    
-    # Update project.pbxproj with Swift compiler flags
-    if [[ -f "Runner.xcodeproj/project.pbxproj" ]]; then
-        # Add Swift compiler flags to the project
-        sed -i '' 's/SWIFT_VERSION = 5.0;/SWIFT_VERSION = 5.0;\n\t\t\t\tOTHER_SWIFT_FLAGS = ("-enable-experimental-feature", "AccessLevelOnImport");/g' Runner.xcodeproj/project.pbxproj
-        
-        success "Xcode project updated with Swift compiler flags"
+    # Check if Flutter is properly configured
+    if ! flutter doctor --android-licenses --quiet; then
+        warning "Flutter doctor check failed, but continuing..."
     fi
     
-    cd ..
+    # Verify iOS setup
+    if ! flutter doctor --verbose | grep -q "iOS toolchain"; then
+        warning "iOS toolchain not properly configured"
+    else
+        success "Flutter iOS setup verified"
+    fi
 }
 
 # Function to check Xcode version
@@ -170,15 +259,23 @@ main() {
     # Create backup
     create_backup
     
+    # Verify Flutter setup
+    verify_flutter_setup
+    
     # Check Xcode version
     if check_xcode_version; then
         # Apply fixes for Xcode 15.x
         fix_podfile
+        fix_flutter_xcconfig
         fix_xcode_project
         clean_and_reinstall_pods
         success "Swift compiler fixes applied successfully!"
     else
         log "Xcode version doesn't require Swift compiler fixes"
+        # Still apply Flutter configuration fixes
+        fix_flutter_xcconfig
+        fix_xcode_project
+        clean_and_reinstall_pods
     fi
     
     log "✅ Swift compiler fix script completed"
