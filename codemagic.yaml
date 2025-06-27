@@ -3384,6 +3384,20 @@ workflows:
           RUBY
           cd ..
 
+      - name: 🔄 Regenerate Environment Configuration
+        script: |
+          echo "🔄 Regenerating environment configuration with current values..."
+          chmod +x lib/scripts/utils/gen_env_config.sh
+          ./lib/scripts/utils/gen_env_config.sh
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Environment configuration regenerated successfully"
+            echo "📋 Generated config preview:"
+            head -10 lib/config/env_config.dart
+          else
+            echo "⚠️ Environment configuration regeneration failed, but continuing..."
+          fi
+
       - name: 📝 Inject dynamic Podfile
         script: |
           echo "📥 Loading environment from $CM_ENV"

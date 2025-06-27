@@ -6,88 +6,146 @@ import 'dart:convert';
 
 // Version info
 
-
 class EnvConfig {
-
-  const String versionName = String.fromEnvironment('VERSION_NAME', defaultValue: '1.0.18');
-  const String versionCode = String.fromEnvironment('VERSION_CODE', defaultValue: '25');
+  static const String versionName =
+      String.fromEnvironment('VERSION_NAME', defaultValue: '1.0.18');
+  static const String versionCode =
+      String.fromEnvironment('VERSION_CODE', defaultValue: '25');
 
 // Keystore config
-  const String keyStoreUrl = String.fromEnvironment('KEY_STORE', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/keystore.jks');
-  const String cmKeystorePassword = String.fromEnvironment('CM_KEYSTORE_PASSWORD', defaultValue: 'opeN@1234');
-  const String cmKeyAlias = String.fromEnvironment('CM_KEY_ALIAS', defaultValue: 'my_key_alias');
-  const String cmKeyPassword = String.fromEnvironment('CM_KEY_PASSWORD', defaultValue: 'opeN@1234');
+  static const String keyStoreUrl = String.fromEnvironment('KEY_STORE',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/keystore.jks');
+  static const String cmKeystorePassword =
+      String.fromEnvironment('CM_KEYSTORE_PASSWORD', defaultValue: 'opeN@1234');
+  static const String cmKeyAlias =
+      String.fromEnvironment('CM_KEY_ALIAS', defaultValue: 'my_key_alias');
+  static const String cmKeyPassword =
+      String.fromEnvironment('CM_KEY_PASSWORD', defaultValue: 'opeN@1234');
 
 // App info
-  const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'Pixaware App');
-  const String orgName = String.fromEnvironment('ORG_NAME', defaultValue: 'Pixaware Technologys');
-  const String packageName = String.fromEnvironment('PKG_NAME', defaultValue: 'co.pixaware.Pixaware');
+  static const String appName =
+      String.fromEnvironment('APP_NAME', defaultValue: 'Pixaware App');
+  static const String orgName =
+      String.fromEnvironment('ORG_NAME', defaultValue: 'Pixaware Technologys');
+  static const String packageName =
+      String.fromEnvironment('PKG_NAME', defaultValue: 'co.pixaware.Pixaware');
 
 // Firebase config
-  const String firebaseConfigAndroid = String.fromEnvironment('FIREBASE_CONFIG_ANDROID', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/google-services-pw.json');
-  const String firebaseConfigIos = String.fromEnvironment('FIREBASE_CONFIG_IOS', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/GoogleService-Info-pw.plist');
-  const String apnsKeyId = String.fromEnvironment('APNS_KEY_ID', defaultValue: '2W22S6AY3Q');
-  const String apnsTeamId = String.fromEnvironment('APPLE_TEAM_ID', defaultValue: '9H2AD7NQ49');
-  const String apnsAuthKeyUrl = String.fromEnvironment('APNS_AUTH_KEY_URL', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/AuthKey_2W22S6AY3Q.p8');
+  static const String firebaseConfigAndroid = String.fromEnvironment(
+      'FIREBASE_CONFIG_ANDROID',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/google-services-pw.json');
+  static const String firebaseConfigIos = String.fromEnvironment(
+      'FIREBASE_CONFIG_IOS',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/GoogleService-Info-pw.plist');
+  static const String apnsKeyId =
+      String.fromEnvironment('APNS_KEY_ID', defaultValue: '2W22S6AY3Q');
+  static const String apnsTeamId =
+      String.fromEnvironment('APPLE_TEAM_ID', defaultValue: '9H2AD7NQ49');
+  static const String apnsAuthKeyUrl = String.fromEnvironment(
+      'APNS_AUTH_KEY_URL',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/AuthKey_2W22S6AY3Q.p8');
 
 // General
-  const String webUrl = String.fromEnvironment('WEB_URL', defaultValue: 'https://pixaware.co/');
-  const String emailId = String.fromEnvironment('EMAIL_ID', defaultValue: 'prasannasrie@gmail.com');
+  static const String webUrl =
+      String.fromEnvironment('WEB_URL', defaultValue: 'https://pixaware.co/');
+  static const String emailId = String.fromEnvironment('EMAIL_ID',
+      defaultValue: 'prasannasrie@gmail.com');
 
 // Splash screen
-  const bool isSplashEnabled = bool.fromEnvironment('IS_SPLASH', defaultValue: true);
-  const String splashBgUrl = String.fromEnvironment('SPLASH_BG_URL', defaultValue: '');
-  const String splashUrl = String.fromEnvironment('SPLASH_URL', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/pw-logo.png');
-  const String splashTagline = String.fromEnvironment('SPLASH_TAGLINE', defaultValue: 'Welcome to Pixaware');
-  const String splashTaglineColor = String.fromEnvironment('SPLASH_TAGLINE_COLOR', defaultValue: '#E91E63');
-  const String splashAnimation = String.fromEnvironment('SPLASH_ANIMATION', defaultValue: 'fade');
-  const int splashDuration = int.fromEnvironment('SPLASH_DURATION', defaultValue: 3);
-  const String splashBgColor = String.fromEnvironment('SPLASH_BG_COLOR', defaultValue: '#cfc3ba');
+  static const bool isSplashEnabled =
+      bool.fromEnvironment('IS_SPLASH', defaultValue: true);
+  static const String splashBgUrl =
+      String.fromEnvironment('SPLASH_BG_URL', defaultValue: '');
+  static const String splashUrl = String.fromEnvironment('SPLASH_URL',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/pw-logo.png');
+  static const String splashTagline = String.fromEnvironment('SPLASH_TAGLINE',
+      defaultValue: 'Welcome to Pixaware');
+  static const String splashTaglineColor =
+      String.fromEnvironment('SPLASH_TAGLINE_COLOR', defaultValue: '#E91E63');
+  static const String splashAnimation =
+      String.fromEnvironment('SPLASH_ANIMATION', defaultValue: 'fade');
+  static const int splashDuration =
+      int.fromEnvironment('SPLASH_DURATION', defaultValue: 3);
+  static const String splashBgColor =
+      String.fromEnvironment('SPLASH_BG_COLOR', defaultValue: '#cfc3ba');
 
 // Pull down
-  const bool isPullDown = bool.fromEnvironment('IS_PULLDOWN', defaultValue: true);
+  static const bool isPullDown =
+      bool.fromEnvironment('IS_PULLDOWN', defaultValue: true);
 
 // Logo
-  const String logoUrl = String.fromEnvironment('LOGO_URL', defaultValue: 'https://raw.githubusercontent.com/prasanna91/QuikApp/main/pw-logo.png');
+  static const String logoUrl = String.fromEnvironment('LOGO_URL',
+      defaultValue:
+          'https://raw.githubusercontent.com/prasanna91/QuikApp/main/pw-logo.png');
 
 // Deep linking
-  const bool isDomainUrl = bool.fromEnvironment('IS_DOMAIN_URL', defaultValue: true);
+  static const bool isDomainUrl =
+      bool.fromEnvironment('IS_DOMAIN_URL', defaultValue: true);
 
 // Loading indicator
-  const bool isLoadIndicator = bool.fromEnvironment('IS_LOAD_IND', defaultValue: true);
+  static const bool isLoadIndicator =
+      bool.fromEnvironment('IS_LOAD_IND', defaultValue: true);
 
 // Permissions
-  const bool isCameraEnabled = bool.fromEnvironment('IS_CAMERA', defaultValue: false);
-  const bool isLocationEnabled = bool.fromEnvironment('IS_LOCATION', defaultValue: false);
-  const bool isMicEnabled = bool.fromEnvironment('IS_MIC', defaultValue: true);
-  const bool isNotificationEnabled = bool.fromEnvironment('IS_NOTIFICATION', defaultValue: true);
-  const bool isContactEnabled = bool.fromEnvironment('IS_CONTACT', defaultValue: false);
-  const bool isBiometricEnabled = bool.fromEnvironment('IS_BIOMETRIC', defaultValue: false);
-  const bool isCalendarEnabled = bool.fromEnvironment('IS_CALENDAR', defaultValue: false);
-  const bool isStorageEnabled = bool.fromEnvironment('IS_STORAGE', defaultValue: true);
+  static const bool isCameraEnabled =
+      bool.fromEnvironment('IS_CAMERA', defaultValue: false);
+  static const bool isLocationEnabled =
+      bool.fromEnvironment('IS_LOCATION', defaultValue: false);
+  static const bool isMicEnabled =
+      bool.fromEnvironment('IS_MIC', defaultValue: true);
+  static const bool isNotificationEnabled =
+      bool.fromEnvironment('IS_NOTIFICATION', defaultValue: true);
+  static const bool isContactEnabled =
+      bool.fromEnvironment('IS_CONTACT', defaultValue: false);
+  static const bool isBiometricEnabled =
+      bool.fromEnvironment('IS_BIOMETRIC', defaultValue: false);
+  static const bool isCalendarEnabled =
+      bool.fromEnvironment('IS_CALENDAR', defaultValue: false);
+  static const bool isStorageEnabled =
+      bool.fromEnvironment('IS_STORAGE', defaultValue: true);
 
 // Push notification
-  const bool pushNotify = bool.fromEnvironment('PUSH_NOTIFY', defaultValue: false);
+  static const bool pushNotify =
+      bool.fromEnvironment('PUSH_NOTIFY', defaultValue: false);
 
 // Bottom menu
-  const bool isBottomMenu = bool.fromEnvironment('IS_BOTTOMMENU', defaultValue: true);
-  const String bottomMenuItems = String.fromEnvironment(
+  static const bool isBottomMenu =
+      bool.fromEnvironment('IS_BOTTOMMENU', defaultValue: true);
+  static const String bottomMenuItems = String.fromEnvironment(
     'BOTTOMMENU_ITEMS',
-    defaultValue: '[{"label":"Home","icon":{"type":"preset","name":"home_outlined"},"url":"https://pixaware.co/"},{"label":"services","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/card.svg","icon_size":"24"},"url":"https://pixaware.co/solutions/"},{"label":"About","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/about.svg","icon_size":"24"},"url":"https://pixaware.co/who-we-are/"},{"label":"Contact","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/contact.svg","icon_size":"24"},"url":"https://pixaware.co/lets-talk/"}]',
+    defaultValue:
+        '[{"label":"Home","icon":{"type":"preset","name":"home_outlined"},"url":"https://pixaware.co/"},{"label":"services","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/card.svg","icon_size":"24"},"url":"https://pixaware.co/solutions/"},{"label":"About","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/about.svg","icon_size":"24"},"url":"https://pixaware.co/who-we-are/"},{"label":"Contact","icon":{"type":"custom","icon_url":"https://raw.githubusercontent.com/prasanna91/QuikApp/main/contact.svg","icon_size":"24"},"url":"https://pixaware.co/lets-talk/"}]',
   );
 
-  const String bottomMenuBgColor = String.fromEnvironment('BOTTOMMENU_BG_COLOR', defaultValue: '#f0f0e0');
-  const String bottomMenuIconColor = String.fromEnvironment('BOTTOMMENU_ICON_COLOR', defaultValue: '#888888');
-  const String bottomMenuTextColor = String.fromEnvironment('BOTTOMMENU_TEXT_COLOR', defaultValue: '#000000');
-  const String bottomMenuActiveTabColor = String.fromEnvironment('BOTTOMMENU_ACTIVE_TAB_COLOR', defaultValue: '#FF2D55');
-  const String bottomMenuIconPosition = String.fromEnvironment('BOTTOMMENU_ICON_POSITION', defaultValue: 'above');
-  const String bottomMenuVisibleOn = String.fromEnvironment('BOTTOMMENU_VISIBLE_ON', defaultValue: 'home,settings,profile');
+  static const String bottomMenuBgColor =
+      String.fromEnvironment('BOTTOMMENU_BG_COLOR', defaultValue: '#f0f0e0');
+  static const String bottomMenuIconColor =
+      String.fromEnvironment('BOTTOMMENU_ICON_COLOR', defaultValue: '#888888');
+  static const String bottomMenuTextColor =
+      String.fromEnvironment('BOTTOMMENU_TEXT_COLOR', defaultValue: '#000000');
+  static const String bottomMenuActiveTabColor = String.fromEnvironment(
+      'BOTTOMMENU_ACTIVE_TAB_COLOR',
+      defaultValue: '#FF2D55');
+  static const String bottomMenuIconPosition =
+      String.fromEnvironment('BOTTOMMENU_ICON_POSITION', defaultValue: 'above');
+  static const String bottomMenuVisibleOn = String.fromEnvironment(
+      'BOTTOMMENU_VISIBLE_ON',
+      defaultValue: 'home,settings,profile');
 
 // Bottom menu font styling (new)
-  const String bottomMenuFont = String.fromEnvironment('BOTTOMMENU_FONT', defaultValue: 'Montserrat');
-  const String bottomMenuFontSize = String.fromEnvironment('BOTTOMMENU_FONT_SIZE', defaultValue: '12');
-  const String bottomMenuFontBold = String.fromEnvironment('BOTTOMMENU_FONT_BOLD', defaultValue: 'false');
-  const String bottomMenuFontItalic = String.fromEnvironment('BOTTOMMENU_FONT_ITALIC', defaultValue: 'false');
+  static const String bottomMenuFont =
+      String.fromEnvironment('BOTTOMMENU_FONT', defaultValue: 'Montserrat');
+  static const String bottomMenuFontSize =
+      String.fromEnvironment('BOTTOMMENU_FONT_SIZE', defaultValue: '12');
+  static const String bottomMenuFontBold =
+      String.fromEnvironment('BOTTOMMENU_FONT_BOLD', defaultValue: 'false');
+  static const String bottomMenuFontItalic =
+      String.fromEnvironment('BOTTOMMENU_FONT_ITALIC', defaultValue: 'false');
   // App Metadata
   // static const String appId = "";
   // static const String versionName = "1.0.0";
@@ -158,8 +216,6 @@ class EnvConfig {
 
   // iOS Signing
   static const String appleTeamId = "";
-  static const String apnsKeyId = "";
-  static const String apnsAuthKeyUrl = "";
   static const String certPassword = "";
   static const String profileUrl = "";
   static const String certP12Url = "";
@@ -178,7 +234,9 @@ class EnvConfig {
   static bool get isAndroidBuild => workflowId.startsWith('android');
   static bool get isIosBuild => workflowId.contains('ios');
   static bool get isCombinedBuild => workflowId == 'combined';
-  static bool get hasFirebase => firebaseConfigAndroid.isNotEmpty || firebaseConfigIos.isNotEmpty;
+  static bool get hasFirebase =>
+      firebaseConfigAndroid.isNotEmpty || firebaseConfigIos.isNotEmpty;
   static bool get hasKeystore => keyStoreUrl.isNotEmpty;
-  static bool get hasIosSigning => certPassword.isNotEmpty && profileUrl.isNotEmpty;
+  static bool get hasIosSigning =>
+      certPassword.isNotEmpty && profileUrl.isNotEmpty;
 }
