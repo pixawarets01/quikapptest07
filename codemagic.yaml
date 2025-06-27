@@ -115,7 +115,7 @@ scripts:
         echo "IS_NOTIFICATION: $IS_NOTIFICATION"
         echo "IS_CONTACT: $IS_CONTACT"
         echo "IS_BIOMETRIC: $IS_BIOMETRIC"
-        echo "IS_CALENDAR: $IS_CALENDAR
+        echo "IS_CALENDAR: $IS_CALENDAR"
 
         echo "*********** Publish Configuration ***********" 
         echo "EMAIL_ID: $EMAIL_ID"
