@@ -203,12 +203,10 @@ clean_and_reinstall_pods() {
     rm -rf ~/Library/Caches/CocoaPods
     rm -rf ~/.cocoapods/repos
     
-    # Clean Flutter build cache
     cd ..
-    flutter clean
-    cd ios
     
     # Install pods with repo update
+    cd ios
     if pod install --repo-update; then
         success "CocoaPods installed successfully"
     else
@@ -279,6 +277,12 @@ main() {
     # Check if we're in the right directory
     if [[ ! -d "ios" ]]; then
         error "iOS directory not found. Please run this script from the project root."
+        exit 1
+    fi
+    
+    # Check if Flutter-generated files exist
+    if [[ ! -f "ios/Flutter/Generated.xcconfig" ]]; then
+        error "Flutter-generated files not found. Please run 'flutter pub get' first."
         exit 1
     fi
     
