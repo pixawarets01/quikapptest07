@@ -51,8 +51,8 @@ scripts:
         echo "APP_NAME: $APP_NAME"
         echo "ORG_NAME: $ORG_NAME"
         echo "WEB_URL: $WEB_URL"
-        echo "VERSION_NAME: $VERSION_NAME      
-        echo "VERSION_CODE: $VERSION_CODE" 
+        echo "VERSION_NAME: $VERSION_NAME"
+        echo "VERSION_CODE: $VERSION_CODE"
         echo "PKG_NAME: $PKG_NAME"
         echo "BUNDLE_ID: $BUNDLE_ID"
 
