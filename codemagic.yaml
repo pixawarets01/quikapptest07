@@ -3466,6 +3466,12 @@ workflows:
             
             echo "🧩 Building Flutter iOS app with optimizations..."
             
+            # Setup Flutter properly
+            echo "🚀 Setting up Flutter and dependencies..."
+            flutter clean
+            flutter pub get
+            flutter doctor --verbose
+            
             # Fix Swift compiler issues with Firebase and Xcode 15.4
             echo "🔧 Applying Swift compiler fixes for Xcode 15.4..."
             
@@ -3534,14 +3540,10 @@ workflows:
             set -euo pipefail
             trap 'echo "❌ Archive failed on line $LINENO"; exit 1' ERR
             
-            echo "📥 Loading environment from \$CM_ENV"
-            while IFS='=' read -r key value; do
-              key=$(echo "$key" | xargs)
-              value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' | xargs)
-              if [[ -n "$key" ]]; then
-                export "$key=$value"
-              fi
-            done < "$CM_ENV"
+            # Load signing environment variables
+            if [[ -f "$CM_BUILD_DIR/signing.env" ]]; then
+              source "$CM_BUILD_DIR/signing.env"
+            fi
             
             # Debug output
             echo "✅ PROFILE_UUID=$PROFILE_UUID"
@@ -3575,6 +3577,11 @@ workflows:
             set -euo pipefail
             trap 'echo "❌ Export failed on line $LINENO"; exit 1' ERR
             
+            # Load signing environment variables
+            if [[ -f "$CM_BUILD_DIR/signing.env" ]]; then
+              source "$CM_BUILD_DIR/signing.env"
+            fi
+            
             echo "📦 Exporting signed IPA..."
             xcodebuild -exportArchive \
               -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
@@ -3590,7 +3597,7 @@ workflows:
               echo "📊 IPA size: $(du -h "$IPA_PATH" | cut -f1)"
             else
               echo "❌ IPA file was not generated!"
-              exit 0
+              exit 1
             fi
 
       artifacts:

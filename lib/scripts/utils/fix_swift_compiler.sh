@@ -81,14 +81,25 @@ post_install do |installer|
       config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/include'
       config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/Headers/Public'
       config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/Headers/Public/*'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/Classes'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/include'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/Classes/Flutter'
+      config.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/include/Flutter'
       
       # Fix framework search paths
       config.build_settings['FRAMEWORK_SEARCH_PATHS'] ||= ['$(inherited)']
       config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/Frameworks'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/Frameworks'
       
       # Fix library search paths
       config.build_settings['LIBRARY_SEARCH_PATHS'] ||= ['$(inherited)']
       config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(PODS_ROOT)/../.symlinks/plugins/*/ios/Libraries'
+      
+      # Additional Flutter-specific fixes
+      config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      config.build_settings['SWIFT_INCLUDE_PATHS'] ||= ['$(inherited)']
+      config.build_settings['SWIFT_INCLUDE_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/Classes'
+      config.build_settings['SWIFT_INCLUDE_PATHS'] << '$(PODS_ROOT)/../.symlinks/flutter/ios/include'
     end
   end
 end
@@ -110,9 +121,14 @@ fix_flutter_xcconfig() {
             echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig\"" >> "Release.xcconfig"
         fi
         
-        # Add Flutter header search paths
+        # Add comprehensive Flutter header search paths
         if ! grep -q "HEADER_SEARCH_PATHS" "Release.xcconfig"; then
-            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Release.xcconfig"
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include \$(PODS_ROOT)/Headers/Public \$(PODS_ROOT)/Headers/Public/* \$(PODS_ROOT)/../.symlinks/flutter/ios/Classes \$(PODS_ROOT)/../.symlinks/flutter/ios/include" >> "Release.xcconfig"
+        fi
+        
+        # Add framework search paths
+        if ! grep -q "FRAMEWORK_SEARCH_PATHS" "Release.xcconfig"; then
+            echo -e "\nFRAMEWORK_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Frameworks \$(PODS_ROOT)/../.symlinks/flutter/ios/Frameworks" >> "Release.xcconfig"
         fi
     fi
     
@@ -123,9 +139,14 @@ fix_flutter_xcconfig() {
             echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig\"" >> "Debug.xcconfig"
         fi
         
-        # Add Flutter header search paths
+        # Add comprehensive Flutter header search paths
         if ! grep -q "HEADER_SEARCH_PATHS" "Debug.xcconfig"; then
-            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Debug.xcconfig"
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include \$(PODS_ROOT)/Headers/Public \$(PODS_ROOT)/Headers/Public/* \$(PODS_ROOT)/../.symlinks/flutter/ios/Classes \$(PODS_ROOT)/../.symlinks/flutter/ios/include" >> "Debug.xcconfig"
+        fi
+        
+        # Add framework search paths
+        if ! grep -q "FRAMEWORK_SEARCH_PATHS" "Debug.xcconfig"; then
+            echo -e "\nFRAMEWORK_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Frameworks \$(PODS_ROOT)/../.symlinks/flutter/ios/Frameworks" >> "Debug.xcconfig"
         fi
     fi
     
@@ -136,14 +157,19 @@ fix_flutter_xcconfig() {
             echo -e "\n#include? \"Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig\"" >> "Profile.xcconfig"
         fi
         
-        # Add Flutter header search paths
+        # Add comprehensive Flutter header search paths
         if ! grep -q "HEADER_SEARCH_PATHS" "Profile.xcconfig"; then
-            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include" >> "Profile.xcconfig"
+            echo -e "\nHEADER_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Classes \$(PODS_ROOT)/../.symlinks/plugins/*/ios/include \$(PODS_ROOT)/Headers/Public \$(PODS_ROOT)/Headers/Public/* \$(PODS_ROOT)/../.symlinks/flutter/ios/Classes \$(PODS_ROOT)/../.symlinks/flutter/ios/include" >> "Profile.xcconfig"
+        fi
+        
+        # Add framework search paths
+        if ! grep -q "FRAMEWORK_SEARCH_PATHS" "Profile.xcconfig"; then
+            echo -e "\nFRAMEWORK_SEARCH_PATHS = \$(inherited) \$(PODS_ROOT)/../.symlinks/plugins/*/ios/Frameworks \$(PODS_ROOT)/../.symlinks/flutter/ios/Frameworks" >> "Profile.xcconfig"
         fi
     fi
     
     cd ../..
-    success "Flutter xcconfig files updated"
+    success "Flutter xcconfig files updated with comprehensive header search paths"
 }
 
 # Function to fix Xcode project configuration
