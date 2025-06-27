@@ -88,7 +88,7 @@ echo "⚠️ First export attempt failed, checking for framework warnings..."
 if grep -q "does not support provisioning profiles" export.log; then
   echo "🔧 Framework provisioning profile issue detected, trying alternative approaches..."
   
-  # Try with manual signing
+  # Try with manual signin g
   echo "🔄 Attempting manual signing approach..."
   
   cat > ExportOptions_manual.plist <<EOF
