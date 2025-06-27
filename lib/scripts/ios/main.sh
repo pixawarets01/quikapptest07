@@ -410,8 +410,27 @@ if [ -n "${CERT_P12_URL:-}" ]; then
     if curl -L --fail --silent --show-error --output "ios/certificates/cert.p12" "${CERT_P12_URL}"; then
         log "✅ P12 certificate downloaded successfully"
         log "🔍 Certificate file size: $(ls -lh ios/certificates/cert.p12 | awk '{print $5}')"
+        
+        # Debug: Check downloaded file
+        log "🔍 Downloaded file details:"
+        log "   File type: $(file ios/certificates/cert.p12)"
+        log "   File permissions: $(ls -la ios/certificates/cert.p12)"
+        log "   File content (first 100 chars): $(head -c 100 ios/certificates/cert.p12 | tr -d '\n')"
+        
+        # Check if file is actually a P12 file
+        if ! file ios/certificates/cert.p12 | grep -q "data\|PKCS12\|certificate"; then
+            log "⚠️ Downloaded file doesn't appear to be a valid P12 certificate"
+            log "🔍 File content analysis:"
+            hexdump -C ios/certificates/cert.p12 | head -5
+            log "❌ Invalid certificate file downloaded"
+            exit 1
+        else
+            log "✅ Downloaded file appears to be a valid P12 certificate"
+        fi
     else
         log "❌ Failed to download P12 certificate"
+        log "🔍 Curl error details:"
+        curl -L --show-error --output /dev/null "${CERT_P12_URL}" 2>&1 || true
         exit 1
     fi
 else
