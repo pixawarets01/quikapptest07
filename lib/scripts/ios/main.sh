@@ -30,7 +30,9 @@ validate_environment_variables() {
     local required_vars=("BUNDLE_ID" "VERSION_NAME" "VERSION_CODE" "APPLE_TEAM_ID")
     local missing_vars=()
     
+    log "🔍 Checking basic required variables..."
     for var in "${required_vars[@]}"; do
+        log "   ${var}: '${!var:-not_set}'"
         if [[ -z "${!var:-}" ]]; then
             missing_vars+=("${var}")
         fi
@@ -38,6 +40,12 @@ validate_environment_variables() {
     
     # Check for TestFlight-specific variables if TestFlight is enabled or if API key path is provided
     local is_testflight_enabled=false
+    log "🔍 Checking TestFlight configuration..."
+    log "   IS_TESTFLIGHT: '${IS_TESTFLIGHT:-not_set}'"
+    log "   APP_STORE_CONNECT_API_KEY_PATH: '${APP_STORE_CONNECT_API_KEY_PATH:-not_set}'"
+    log "   APP_STORE_CONNECT_KEY_IDENTIFIER: '${APP_STORE_CONNECT_KEY_IDENTIFIER:-not_set}'"
+    log "   APP_STORE_CONNECT_ISSUER_ID: '${APP_STORE_CONNECT_ISSUER_ID:-not_set}'"
+    
     if [[ "$(echo "${IS_TESTFLIGHT:-false}" | tr '[:upper:]' '[:lower:]')" == "true" ]]; then
         is_testflight_enabled=true
         log "🔔 TestFlight is explicitly enabled"
@@ -87,6 +95,13 @@ validate_environment_variables() {
     fi
     
     # Check for certificate variables (skip for auto-ios-workflow with auto-generated certificates)
+    log "🔍 Checking certificate configuration..."
+    log "   WORKFLOW_ID: '${WORKFLOW_ID:-not_set}'"
+    log "   CERT_P12_URL: '${CERT_P12_URL:-not_set}'"
+    log "   CERT_CER_URL: '${CERT_CER_URL:-not_set}'"
+    log "   CERT_KEY_URL: '${CERT_KEY_URL:-not_set}'"
+    log "   CERT_PASSWORD: '${CERT_PASSWORD:+set}'"
+    
     if [[ "${WORKFLOW_ID}" == "auto-ios-workflow" ]] && [[ "${CERT_P12_URL:-}" == "auto-generated" ]]; then
         log "🔐 Auto-ios-workflow detected with auto-generated certificates - skipping certificate validation"
     else
@@ -96,10 +111,12 @@ validate_environment_variables() {
         
         if [[ -n "${CERT_P12_URL:-}" ]] && [[ "${CERT_P12_URL}" == http* ]]; then
             has_p12_url=true
+            log "✅ CERT_P12_URL is valid"
         fi
         
         if [[ -n "${CERT_CER_URL:-}" ]] && [[ -n "${CERT_KEY_URL:-}" ]] && [[ "${CERT_CER_URL}" == http* ]] && [[ "${CERT_KEY_URL}" == http* ]]; then
             has_cer_key_urls=true
+            log "✅ CERT_CER_URL and CERT_KEY_URL are valid"
         fi
         
         if [[ "$has_p12_url" == "false" ]] && [[ "$has_cer_key_urls" == "false" ]]; then
@@ -113,6 +130,9 @@ validate_environment_variables() {
     fi
     
     # Check for provisioning profile (skip for auto-ios-workflow with auto-generated certificates)
+    log "🔍 Checking provisioning profile configuration..."
+    log "   PROFILE_URL: '${PROFILE_URL:-not_set}'"
+    
     if [[ "${WORKFLOW_ID}" == "auto-ios-workflow" ]] && [[ "${PROFILE_URL:-}" == "auto-generated" ]]; then
         log "🔐 Auto-ios-workflow detected with auto-generated certificates - skipping profile validation"
     else
