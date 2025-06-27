@@ -661,7 +661,15 @@ export_ipa() {
     local use_app_store_connect_auth=false
     local api_key_path=""
     
-    if [[ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER}" && -n "${APP_STORE_CONNECT_API_KEY_PATH}" && -n "${APP_STORE_CONNECT_ISSUER_ID}" ]]; then
+    # First check if API key is already downloaded and set by main.sh
+    if [[ -n "${APP_STORE_CONNECT_API_KEY:-}" ]] && [[ -f "${APP_STORE_CONNECT_API_KEY}" ]]; then
+        log "🔐 Using already downloaded App Store Connect API key"
+        log "   Key ID: ${APP_STORE_CONNECT_KEY_IDENTIFIER}"
+        log "   Issuer ID: ${APP_STORE_CONNECT_ISSUER_ID}"
+        log "   API Key Path: ${APP_STORE_CONNECT_API_KEY}"
+        api_key_path="${APP_STORE_CONNECT_API_KEY}"
+        use_app_store_connect_auth=true
+    elif [[ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER}" && -n "${APP_STORE_CONNECT_API_KEY_PATH}" && -n "${APP_STORE_CONNECT_ISSUER_ID}" ]]; then
         log "🔐 App Store Connect API credentials detected"
         log "   Key ID: ${APP_STORE_CONNECT_KEY_IDENTIFIER}"
         log "   Issuer ID: ${APP_STORE_CONNECT_ISSUER_ID}"

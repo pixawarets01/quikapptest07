@@ -36,14 +36,54 @@ validate_environment_variables() {
         fi
     done
     
-    # Check for TestFlight-specific variables if TestFlight is enabled
+    # Check for TestFlight-specific variables if TestFlight is enabled or if API key path is provided
+    local is_testflight_enabled=false
     if [[ "$(echo "${IS_TESTFLIGHT:-false}" | tr '[:upper:]' '[:lower:]')" == "true" ]]; then
-        local testflight_vars=("APP_STORE_CONNECT_KEY_IDENTIFIER" "APP_STORE_CONNECT_ISSUER_ID" "APP_STORE_CONNECT_API_KEY")
+        is_testflight_enabled=true
+        log "🔔 TestFlight is explicitly enabled"
+    elif [[ -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]] || [[ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ]] || [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]]; then
+        is_testflight_enabled=true
+        log "🔔 TestFlight variables detected - enabling TestFlight validation"
+    fi
+    
+    if [[ "$is_testflight_enabled" == "true" ]]; then
+        local testflight_vars=("APP_STORE_CONNECT_KEY_IDENTIFIER" "APP_STORE_CONNECT_ISSUER_ID")
         for var in "${testflight_vars[@]}"; do
             if [[ -z "${!var:-}" ]]; then
                 missing_vars+=("${var}")
             fi
         done
+        
+        # Handle APP_STORE_CONNECT_API_KEY_PATH (can be URL or local path)
+        if [[ -z "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]]; then
+            missing_vars+=("APP_STORE_CONNECT_API_KEY_PATH")
+        else
+            # Download API key if it's a URL
+            if [[ "${APP_STORE_CONNECT_API_KEY_PATH}" == http* ]]; then
+                log "📥 Downloading App Store Connect API key from URL..."
+                local api_key_dir="/tmp/app_store_connect_keys"
+                mkdir -p "${api_key_dir}"
+                local api_key_path="${api_key_dir}/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+                
+                if curl -fsSL -o "${api_key_path}" "${APP_STORE_CONNECT_API_KEY_PATH}"; then
+                    log "✅ API key downloaded successfully to ${api_key_path}"
+                    export APP_STORE_CONNECT_API_KEY="${api_key_path}"
+                    log "🔧 Set APP_STORE_CONNECT_API_KEY to ${api_key_path}"
+                else
+                    log "❌ Failed to download API key from ${APP_STORE_CONNECT_API_KEY_PATH}"
+                    missing_vars+=("APP_STORE_CONNECT_API_KEY (download failed)")
+                fi
+            elif [[ -f "${APP_STORE_CONNECT_API_KEY_PATH}" ]]; then
+                log "✅ API key file exists at ${APP_STORE_CONNECT_API_KEY_PATH}"
+                export APP_STORE_CONNECT_API_KEY="${APP_STORE_CONNECT_API_KEY_PATH}"
+                log "🔧 Set APP_STORE_CONNECT_API_KEY to ${APP_STORE_CONNECT_API_KEY_PATH}"
+            else
+                log "❌ API key file not found at ${APP_STORE_CONNECT_API_KEY_PATH}"
+                missing_vars+=("APP_STORE_CONNECT_API_KEY (file not found)")
+            fi
+        fi
+    else
+        log "🔕 TestFlight is not enabled - skipping TestFlight validation"
     fi
     
     # Check for certificate variables (skip for auto-ios-workflow with auto-generated certificates)
