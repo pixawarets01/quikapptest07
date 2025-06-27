@@ -1,4 +1,4 @@
-# 🚀 Common Variables Block - Shared across all workflows
+﻿# 🚀 Common Variables Block - Shared across all workflows
 common_vars: &common_vars # 🚀 Enhanced Build Success Rate Optimizations
   GRADLE_OPTS: "-Xmx12G -XX:MaxMetaspaceSize=3G -XX:ReservedCodeCacheSize=1G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:+OptimizeStringConcat -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
   XCODE_PARALLEL_JOBS: "8"
@@ -51,7 +51,7 @@ scripts:
         echo "APP_NAME: $APP_NAME"
         echo "ORG_NAME: $ORG_NAME"
         echo "WEB_URL: $WEB_URL"
-        echo "VERSION_NAME: $VERSION_NAME"      
+        echo "VERSION_NAME: $VERSION_NAME      
         echo "VERSION_CODE: $VERSION_CODE" 
         echo "PKG_NAME: $PKG_NAME"
         echo "BUNDLE_ID: $BUNDLE_ID"
@@ -1280,15 +1280,23 @@ scripts:
           # Flutter build
           echo "⚙️ Building Flutter iOS project..."
           flutter build ios --release --no-codesign \
-          --dart-define=WEB_URL="$WEB_URL" \
-          --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
-          --dart-define=PKG_NAME="$PKG_NAME" \
-          --dart-define=APP_NAME="$APP_NAME" \
-          --dart-define=ORG_NAME="$ORG_NAME" \
+          --dart-define=WORKFLOW_ID="$WORKFLOW_ID" \
+          --dart-define=USER_NAME="$USER_NAME" \
+          --dart-define=APP_ID="$APP_ID" \
           --dart-define=VERSION_NAME="$VERSION_NAME" \
           --dart-define=VERSION_CODE="$VERSION_CODE" \
+          --dart-define=APP_NAME="$APP_NAME" \
+          --dart-define=ORG_NAME="$ORG_NAME" \
+          --dart-define=WEB_URL="$WEB_URL" \
+          --dart-define=PKG_NAME="$PKG_NAME" \
+          --dart-define=BUNDLE_ID="$BUNDLE_ID" \
           --dart-define=EMAIL_ID="$EMAIL_ID" \
+          --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
+          --dart-define=IS_CHATBOT="$IS_CHATBOT" \
+          --dart-define=IS_DOMAIN_URL="$IS_DOMAIN_URL" \
           --dart-define=IS_SPLASH="$IS_SPLASH" \
+          --dart-define=SPLASH_URL="$SPLASH_URL" \
+          --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
           --dart-define=SPLASH="$SPLASH" \
           --dart-define=SPLASH_BG="$SPLASH_BG" \
           --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
@@ -1314,15 +1322,30 @@ scripts:
           --dart-define=IS_LOAD_IND="$IS_LOAD_IND" \
           --dart-define=IS_CAMERA="$IS_CAMERA" \
           --dart-define=IS_LOCATION="$IS_LOCATION" \
-          --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
           --dart-define=IS_MIC="$IS_MIC" \
-          --dart-define=IS_CONTACT="$IS_CONTACT" \
-          --dart-define=IS_CALENDAR="$IS_CALENDAR" \
           --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
+          --dart-define=IS_CONTACT="$IS_CONTACT" \
+          --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
+          --dart-define=IS_CALENDAR="$IS_CALENDAR" \
           --dart-define=IS_STORAGE="$IS_STORAGE" \
+          --dart-define=FIREBASE_CONFIG_ANDROID="$FIREBASE_CONFIG_ANDROID" \
+          --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS" \
+          --dart-define=firebase_config_android="$firebase_config_android" \
+          --dart-define=firebase_config_ios="$firebase_config_ios" \
           --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
           --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
           --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
+          --dart-define=PROFILE_TYPE="$PROFILE_TYPE" \
+          --dart-define=PROFILE_URL="$PROFILE_URL" \
+          --dart-define=CERT_CER_URL="$CERT_CER_URL" \
+          --dart-define=CERT_KEY_URL="$CERT_KEY_URL" \
+          --dart-define=CERT_PASSWORD="$CERT_PASSWORD" \
+          --dart-define=CERT_P12_URL="$CERT_P12_URL" \
+          --dart-define=IS_TESTFLIGHT="$IS_TESTFLIGHT" \
+          --dart-define=APP_STORE_CONNECT_KEY_IDENTIFIER="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+          --dart-define=APP_STORE_CONNECT_API_KEY_PATH="$APP_STORE_CONNECT_API_KEY_PATH" \
+          --dart-define=APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+          --dart-define=KEY_STORE_URL="$KEY_STORE_URL" \
           --dart-define=KEY_STORE="$KEY_STORE" \
           --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
           --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
@@ -2899,7 +2922,7 @@ workflows:
                   if [ -f "output/ios/Runner.ipa" ]; then
                     echo "✅ Direct export with App Store Connect API successful!"
                     echo "📊 IPA size: $(du -h output/ios/Runner.ipa | cut -f1)"
-                    echo "🎯 Profile Type: app-store"
+                    echo "🎯 Profile Type: $PROFILE_TYPE"
                     echo "📦 Ready for App Store Connect upload"
                   else
                     echo "⚠️ Direct export failed, but archive is still available"
@@ -2975,7 +2998,7 @@ workflows:
       - output/ios/
       - build/ios/
   ios-workflow2:
-    name: iOS Workflow
+    name: iOS Workflow 2
     instance_type: mac_mini_m1
     max_build_duration: 120
     environment:
@@ -2983,138 +3006,250 @@ workflows:
       xcode: latest
       cocoapods: 1.13.0
       vars:
+        # Workflow Configuration
+        WORKFLOW_ID: "ios-workflow2"
+        
+        # Build optimization variables
+        GRADLE_OPTS: "-Xmx12G -XX:MaxMetaspaceSize=3G -XX:ReservedCodeCacheSize=1G -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:+OptimizeStringConcat -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+        XCODE_PARALLEL_JOBS: "8"
+        GRADLE_DAEMON: "true"
+        GRADLE_PARALLEL: "true"
+        GRADLE_CACHING: "true"
+        GRADLE_OFFLINE: "false"
+        GRADLE_CONFIGURE_ON_DEMAND: "true"
+        GRADLE_BUILD_CACHE: "true"
+        GRADLE_WORKER_MAX_HEAP_SIZE: "2G"
+        FLUTTER_PUB_CACHE: "true"
+        FLUTTER_VERBOSE: "false"
+        FLUTTER_ANALYZE: "true"
+        FLUTTER_TEST: "false"
+        FLUTTER_BUILD_NUMBER: "auto"
+        ASSET_OPTIMIZATION: "true"
+        IMAGE_COMPRESSION: "true"
+        PARALLEL_DOWNLOADS: "true"
+        DOWNLOAD_TIMEOUT: "300"
+        DOWNLOAD_RETRIES: "3"
+        FAIL_ON_WARNINGS: "false"
+        CONTINUE_ON_ERROR: "true"
+        RETRY_ON_FAILURE: "true"
+        MAX_RETRIES: "2"
+        
+        # Email Configuration
+        ENABLE_EMAIL_NOTIFICATIONS: "true"
+        EMAIL_SMTP_SERVER: "smtp.gmail.com"
+        EMAIL_SMTP_PORT: "587"
+        EMAIL_SMTP_USER: "prasannasrie@gmail.com"
+        EMAIL_SMTP_PASS: "lrnu krfm aarp urux"
+        ENABLE_BUILD_RECOVERY: "true"
+        CLEAN_ON_FAILURE: "true"
+        CACHE_ON_SUCCESS: "true"
+        
+        # App Configuration Variables
+        USER_NAME: $USER_NAME
+        APP_ID: $APP_ID
+        BRANCH: $BRANCH
+        VERSION_NAME: $VERSION_NAME
+        VERSION_CODE: $VERSION_CODE
+        APP_NAME: $APP_NAME
+        ORG_NAME: $ORG_NAME
+        WEB_URL: $WEB_URL
+        PKG_NAME: $PKG_NAME
+        BUNDLE_ID: $BUNDLE_ID
+        PUSH_NOTIFY: $PUSH_NOTIFY
+        IS_CHATBOT: $IS_CHATBOT
+        IS_DOMAIN_URL: $IS_DOMAIN_URL
+        
+        # Feature Flags
+        IS_SPLASH: $IS_SPLASH
+        IS_PULLDOWN: $IS_PULLDOWN
+        IS_BOTTOMMENU: $IS_BOTTOMMENU
+        IS_LOAD_IND: $IS_LOAD_IND
+        IS_DEEPLINK: $IS_DEEPLINK
+        
+        # Permissions
+        IS_CAMERA: $IS_CAMERA
+        IS_LOCATION: $IS_LOCATION
+        IS_MIC: $IS_MIC
+        IS_NOTIFICATION: $IS_NOTIFICATION
+        IS_CONTACT: $IS_CONTACT
+        IS_BIOMETRIC: $IS_BIOMETRIC
+        IS_CALENDAR: $IS_CALENDAR
+        IS_STORAGE: $IS_STORAGE
+        
+        # UI Configuration
+        LOGO_URL: $LOGO_URL
+        SPLASH_URL: $SPLASH_URL
+        SPLASH_BG_URL: $SPLASH_BG_URL
+        SPLASH: $SPLASH
+        SPLASH_BG: $SPLASH_BG
+        SPLASH_BG_COLOR: $SPLASH_BG_COLOR
+        SPLASH_TAGLINE: $SPLASH_TAGLINE
+        SPLASH_TAGLINE_COLOR: $SPLASH_TAGLINE_COLOR
+        SPLASH_ANIMATION: $SPLASH_ANIMATION
+        SPLASH_DURATION: $SPLASH_DURATION
+        
+        # Bottom Menu Configuration
+        BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS
+        BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR
+        BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR
+        BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR
+        BOTTOMMENU_FONT: $BOTTOMMENU_FONT
+        BOTTOMMENU_FONT_SIZE: $BOTTOMMENU_FONT_SIZE
+        BOTTOMMENU_FONT_BOLD: $BOTTOMMENU_FONT_BOLD
+        BOTTOMMENU_FONT_ITALIC: $BOTTOMMENU_FONT_ITALIC
+        BOTTOMMENU_ACTIVE_TAB_COLOR: $BOTTOMMENU_ACTIVE_TAB_COLOR
+        BOTTOMMENU_ICON_POSITION: $BOTTOMMENU_ICON_POSITION
+        BOTTOMMENU_VISIBLE_ON: $BOTTOMMENU_VISIBLE_ON
+        
+        # Firebase Configuration
+        FIREBASE_CONFIG_ANDROID: $FIREBASE_CONFIG_ANDROID
+        FIREBASE_CONFIG_IOS: $FIREBASE_CONFIG_IOS
+        firebase_config_android: $firebase_config_android
+        firebase_config_ios: $firebase_config_ios
+        
+        # iOS Code Signing Variables
         CERT_CER_URL: $CERT_CER_URL
         CERT_KEY_URL: $CERT_KEY_URL
         CERT_PASSWORD: $CERT_PASSWORD
+        CERT_P12_URL: $CERT_P12_URL
         KEYCHAIN_PASSWORD: $KEYCHAIN_PASSWORD
         PROFILE_URL: $PROFILE_URL
-        BUNDLE_ID: $BUNDLE_ID
+        PROFILE_TYPE: $PROFILE_TYPE
         APPLE_TEAM_ID: $APPLE_TEAM_ID
         EMAIL_ID: $EMAIL_ID
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_API_KEY_PATH: $APP_STORE_CONNECT_API_KEY_PATH
+        APNS_KEY_ID: $APNS_KEY_ID
+        APNS_AUTH_KEY_URL: $APNS_AUTH_KEY_URL
+        IS_TESTFLIGHT: $IS_TESTFLIGHT
+        
+        # Android Keystore (for reference)
+        KEY_STORE_URL: $KEY_STORE_URL
+        KEY_STORE: $KEY_STORE
+        CM_KEYSTORE_PASSWORD: $CM_KEYSTORE_PASSWORD
+        CM_KEY_ALIAS: $CM_KEY_ALIAS
+        CM_KEY_PASSWORD: $CM_KEY_PASSWORD
     scripts:
       - name: 🔐 iOS Code Signing Setup
         script: |
           set -euo pipefail
           trap 'echo "❌ Error on line $LINENO"' ERR
 
-
           # ✅ Required environment variables
-            REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD CM_BUILD_DIR CM_ENV)
-            echo "🔍 Validating environment variables..."
-            for VAR in "${REQUIRED_VARS[@]}"; do
+          REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD CM_BUILD_DIR CM_ENV)
+          echo "🔍 Validating environment variables..."
+          for VAR in "${REQUIRED_VARS[@]}"; do
             [[ -z "${!VAR:-}" ]] && { echo "❌ Missing $VAR"; exit 1; }
             echo "✅ $VAR is set"
-              done
+          done
 
-              # 🔧 Paths
-              KEYCHAIN_NAME="ios-build.keychain"
-              BUILD_DIR="$CM_BUILD_DIR"
-              CERT_CER_PATH="$BUILD_DIR/certificate.cer"
-              PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
-              P12_PATH="$BUILD_DIR/generated_certificate.p12"
-              PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
+          # 🔧 Paths
+          KEYCHAIN_NAME="ios-build.keychain"
+          BUILD_DIR="$CM_BUILD_DIR"
+          CERT_CER_PATH="$BUILD_DIR/certificate.cer"
+          PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
+          P12_PATH="$BUILD_DIR/generated_certificate.p12"
+          PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
 
-              mkdir -p "$BUILD_DIR"
+          mkdir -p "$BUILD_DIR"
 
-              echo "📥 Downloading cert, key, and mobileprovision..."
-              curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
-              curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
-              curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
+          echo "📥 Downloading cert, key, and mobileprovision..."
+          curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
+          curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
+          curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
 
-              echo "🔐 Generating .p12 from cert + key..."
-              openssl pkcs12 -export \
-              -inkey "$PRIVATE_KEY_PATH" \
-              -in "$CERT_CER_PATH" \
-              -out "$P12_PATH" \
-              -name "Apple Distribution" \
-              -certfile "$CERT_CER_PATH" \
-              -passout pass:"$CERT_PASSWORD" \
-              -legacy
+          echo "🔐 Generating .p12 from cert + key..."
+          openssl pkcs12 -export \
+            -inkey "$PRIVATE_KEY_PATH" \
+            -in "$CERT_CER_PATH" \
+            -out "$P12_PATH" \
+            -name "Apple Distribution" \
+            -certfile "$CERT_CER_PATH" \
+            -passout pass:"$CERT_PASSWORD" \
+            -legacy
 
-              echo "🔐 Setting up keychain..."
-              security delete-keychain "$KEYCHAIN_NAME" || true
-              security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-              security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-              security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          echo "🔐 Setting up keychain..."
+          security delete-keychain "$KEYCHAIN_NAME" || true
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
 
-              echo "🔑 Importing .p12..."
-              security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-            security list-keychains -s "$KEYCHAIN_NAME"
-              security default-keychain -s "$KEYCHAIN_NAME"
+          echo "🔑 Importing .p12..."
+          security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security list-keychains -s "$KEYCHAIN_NAME"
+          security default-keychain -s "$KEYCHAIN_NAME"
 
-              echo "📲 Installing provisioning profile..."
-              PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-              PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-              mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-              cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+          echo "📲 Installing provisioning profile..."
+          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+          PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
 
-              echo "📛 Extracting CODE_SIGN_IDENTITY from .p12..."
-              EXTRACTED_IDENTITY=$(openssl pkcs12 -in "$P12_PATH" -nokeys -legacy -passin pass:"$CERT_PASSWORD" \
-              | openssl x509 -noout -subject | sed -n 's/^subject=.*CN=\(.*\)/\1/p')
+          echo "📛 Extracting CODE_SIGN_IDENTITY from .p12..."
+          EXTRACTED_IDENTITY=$(openssl pkcs12 -in "$P12_PATH" -nokeys -legacy -passin pass:"$CERT_PASSWORD" \
+            | openssl x509 -noout -subject | sed -n 's/^subject=.*CN=\(.*\)/\1/p')
 
-            if [[ -z "$EXTRACTED_IDENTITY" ]]; then
-              echo "❌ Failed to extract CODE_SIGN_IDENTITY from .p12"
-              exit 1
-              fi
-              CODE_SIGN_IDENTITY="$EXTRACTED_IDENTITY"
+          if [[ -z "$EXTRACTED_IDENTITY" ]]; then
+            echo "❌ Failed to extract CODE_SIGN_IDENTITY from .p12"
+            exit 1
+          fi
+          CODE_SIGN_IDENTITY="$EXTRACTED_IDENTITY"
 
-              echo "✅ PROFILE_UUID=$PROFILE_UUID"
-              echo "✅ PROFILE_NAME=$PROFILE_NAME"
-              echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          echo "✅ PROFILE_UUID=$PROFILE_UUID"
+          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
 
-              # Export to .env for use in xcodebuild
-              echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
-              echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
-              #echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
-              #echo "CODE_SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\"" >> "$CM_ENV"
+          # Export to .env for use in xcodebuild
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
+          echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
 
-            # ✅ CERTIFICATE MATCH VALIDATION
-            echo "🔍 Validating that provisioning profile matches signing cert..."
+          # ✅ CERTIFICATE MATCH VALIDATION
+          echo "🔍 Validating that provisioning profile matches signing cert..."
 
-            PROFILE_PLIST="$BUILD_DIR/profile.plist"
-            CERT_DER_PATH="$BUILD_DIR/dev_cert.der"
+          PROFILE_PLIST="$BUILD_DIR/profile.plist"
+          CERT_DER_PATH="$BUILD_DIR/dev_cert.der"
 
-            # Decode .mobileprovision into plist
-            security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          # Decode .mobileprovision into plist
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
 
-            # Extract base64 and decode into DER file using awk (safe for multiline)
-            CERT_BASE64=$(plutil -extract DeveloperCertificates.0 xml1 -o - "$PROFILE_PLIST" \
+          # Extract base64 and decode into DER file using awk (safe for multiline)
+          CERT_BASE64=$(plutil -extract DeveloperCertificates.0 xml1 -o - "$PROFILE_PLIST" \
             | awk '/<data>/,/<\/data>/' \
             | sed -e 's/<[^>]*>//g' -e 's/^[ \t]*//' \
             | tr -d '\n')
 
-            if [[ -z "$CERT_BASE64" ]]; then
+          if [[ -z "$CERT_BASE64" ]]; then
             echo "❌ Failed to extract base64 certificate data"
             exit 1
-            fi
+          fi
 
-            echo "$CERT_BASE64" | base64 -d > "$CERT_DER_PATH"
+          echo "$CERT_BASE64" | base64 -d > "$CERT_DER_PATH"
 
-            # Validate extracted certificate
-            if ! openssl x509 -inform der -in "$CERT_DER_PATH" -noout > /dev/null 2>&1; then
+          # Validate extracted certificate
+          if ! openssl x509 -inform der -in "$CERT_DER_PATH" -noout > /dev/null 2>&1; then
             echo "❌ Extracted certificate is invalid or unreadable"
             exit 1
-            fi
+          fi
 
-            echo "✅ Provisioning profile contains a valid Developer Certificate."
+          echo "✅ Provisioning profile contains a valid Developer Certificate."
 
-            DER_HASH=$(openssl x509 -in "$CERT_DER_PATH" -inform der -noout -sha1 -fingerprint)
-            CER_HASH=$(openssl x509 -in "$CERT_CER_PATH" -noout -sha1 -fingerprint)
+          DER_HASH=$(openssl x509 -in "$CERT_DER_PATH" -inform der -noout -sha1 -fingerprint)
+          CER_HASH=$(openssl x509 -in "$CERT_CER_PATH" -noout -sha1 -fingerprint)
 
-            if [[ "$DER_HASH" != "$CER_HASH" ]]; then
+          if [[ "$DER_HASH" != "$CER_HASH" ]]; then
             echo "❌ Certificate in profile does NOT match imported .cer"
             echo "DER: $DER_HASH"
             echo "CER: $CER_HASH"
             exit 1
-            else
+          else
             echo "✅ Certificate matches the .cer used to generate the .p12"
-            fi
-            echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
-
-
+          fi
+          echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
 
       - *debug_env
       - *change_proj_name
@@ -3187,43 +3322,23 @@ workflows:
           </dict>
           </plist>
           EOF_ENTITLEMENTS
-      #            cat > ios/Runner/Runner.entitlements <<EOF_ENTITLEMENTS
-      #            <?xml version="1.0" encoding="UTF-8"?>
-      #            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      #            <plist version="1.0">
-      #            <dict>
-      #              <key>com.apple.security.app-sandbox</key>
-      #              <true/>
-      #              <key>com.apple.security.network.client</key>
-      #              <true/>
-      #              <key>com.apple.developer.team-identifier</key>
-      #              <string>${APPLE_TEAM_ID}</string>
-      #              <key>keychain-access-groups</key>
-      #              <array>
-      #                <string>${APPLE_TEAM_ID}.*</string>
-      #              </array>
-      #              <key>get-task-allow</key>
-      #              <false/>
-      #              <key>application-identifier</key>
-      #              <string>${APPLE_TEAM_ID}.${BUNDLE_ID}</string>
-      #            </dict>
-      #            </plist>
-      #            EOF_ENTITLEMENTS
 
       - name: 📦 Setup Ruby & CocoaPods
         script: |
           rbenv install 3.3.0 || true
           rbenv global 3.3.0
           gem install cocoapods -v 1.16.2
+
       - name: 📝 Inject dynamic Podfile
         script: |
           echo "📥 Loading environment from $CM_ENV"
           set -a
           source "$CM_ENV"
           set +a
-                echo "✅ PROFILE_UUID=$PROFILE_UUID"
-                echo "✅ PROFILE_NAME=$PROFILE_NAME"
-                #echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          echo "✅ PROFILE_UUID=$PROFILE_UUID"
+          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          
           cat > ios/Podfile <<EOF
           platform :ios, '13.0'
           use_frameworks! :linkage => :static
@@ -3298,45 +3413,53 @@ workflows:
       - name: Generate ExportOptions Build
         script: |
           echo "✅ Creating ExportOptions.plist:"
-            cat > ExportOptions.plist <<EOF
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>$APPLE_TEAM_ID</string>
+            <key>provisioningProfiles</key>
             <dict>
-              <key>method</key>
-              <string>app-store-connect</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>teamID</key>
-              <string>$APPLE_TEAM_ID</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                <key>$BUNDLE_ID</key>
-                <string>$PROFILE_NAME</string>
-              </dict>
-              <key>compileBitcode</key>
-              <false/>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>signingCertificate</key>
-              <string>$CODE_SIGN_IDENTITY</string>
+              <key>$BUNDLE_ID</key>
+              <string>$PROFILE_NAME</string>
             </dict>
-            </plist>
-            EOF
+            <key>compileBitcode</key>
+            <false/>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>signingCertificate</key>
+            <string>$CODE_SIGN_IDENTITY</string>
+          </dict>
+          </plist>
+          EOF
 
       - name: Flutter IPA Build
         script: |
           flutter build ios --release \
             --no-codesign \
-            --dart-define=WEB_URL="$WEB_URL" \
-            --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
-            --dart-define=PKG_NAME="$PKG_NAME" \
-            --dart-define=APP_NAME="$APP_NAME" \
-            --dart-define=ORG_NAME="$ORG_NAME" \
+            --dart-define=WORKFLOW_ID="$WORKFLOW_ID" \
+            --dart-define=USER_NAME="$USER_NAME" \
+            --dart-define=APP_ID="$APP_ID" \
             --dart-define=VERSION_NAME="$VERSION_NAME" \
             --dart-define=VERSION_CODE="$VERSION_CODE" \
+            --dart-define=APP_NAME="$APP_NAME" \
+            --dart-define=ORG_NAME="$ORG_NAME" \
+            --dart-define=WEB_URL="$WEB_URL" \
+            --dart-define=PKG_NAME="$PKG_NAME" \
+            --dart-define=BUNDLE_ID="$BUNDLE_ID" \
             --dart-define=EMAIL_ID="$EMAIL_ID" \
+            --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
+            --dart-define=IS_CHATBOT="$IS_CHATBOT" \
+            --dart-define=IS_DOMAIN_URL="$IS_DOMAIN_URL" \
             --dart-define=IS_SPLASH="$IS_SPLASH" \
+            --dart-define=SPLASH_URL="$SPLASH_URL" \
+            --dart-define=SPLASH_BG_URL="$SPLASH_BG_URL" \
             --dart-define=SPLASH="$SPLASH" \
             --dart-define=SPLASH_BG="$SPLASH_BG" \
             --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
@@ -3360,80 +3483,36 @@ workflows:
             --dart-define=BOTTOMMENU_VISIBLE_ON="$BOTTOMMENU_VISIBLE_ON" \
             --dart-define=IS_DEEPLINK="$IS_DEEPLINK" \
             --dart-define=IS_LOAD_IND="$IS_LOAD_IND" \
-            --dart-define=IS_CHATBOT="$IS_CHATBOT" \
             --dart-define=IS_CAMERA="$IS_CAMERA" \
             --dart-define=IS_LOCATION="$IS_LOCATION" \
-            --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
             --dart-define=IS_MIC="$IS_MIC" \
-            --dart-define=IS_CONTACT="$IS_CONTACT" \
-            --dart-define=IS_CALENDAR="$IS_CALENDAR" \
             --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
+            --dart-define=IS_CONTACT="$IS_CONTACT" \
+            --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
+            --dart-define=IS_CALENDAR="$IS_CALENDAR" \
             --dart-define=IS_STORAGE="$IS_STORAGE" \
+            --dart-define=FIREBASE_CONFIG_ANDROID="$FIREBASE_CONFIG_ANDROID" \
+            --dart-define=FIREBASE_CONFIG_IOS="$FIREBASE_CONFIG_IOS" \
             --dart-define=firebase_config_android="$firebase_config_android" \
             --dart-define=firebase_config_ios="$firebase_config_ios" \
             --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
             --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
+            --dart-define=PROFILE_TYPE="$PROFILE_TYPE" \
+            --dart-define=PROFILE_URL="$PROFILE_URL" \
+            --dart-define=CERT_CER_URL="$CERT_CER_URL" \
+            --dart-define=CERT_KEY_URL="$CERT_KEY_URL" \
+            --dart-define=CERT_PASSWORD="$CERT_PASSWORD" \
+            --dart-define=CERT_P12_URL="$CERT_P12_URL" \
+            --dart-define=IS_TESTFLIGHT="$IS_TESTFLIGHT" \
+            --dart-define=APP_STORE_CONNECT_KEY_IDENTIFIER="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --dart-define=APP_STORE_CONNECT_API_KEY_PATH="$APP_STORE_CONNECT_API_KEY_PATH" \
+            --dart-define=APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+            --dart-define=KEY_STORE_URL="$KEY_STORE_URL" \
             --dart-define=KEY_STORE="$KEY_STORE" \
             --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
             --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
             --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD"
-      #          \
-      #            --export-options-plist=ExportOptions.plist > flutter_build_ios.log
-
-      #          flutter build ipa --release \
-      #                              #--no-codesign \
-      #                              --dart-define=WEB_URL="$WEB_URL" \
-      #                              --dart-define=PUSH_NOTIFY="$PUSH_NOTIFY" \
-      #                              --dart-define=PKG_NAME="$PKG_NAME" \
-      #                              --dart-define=APP_NAME="$APP_NAME" \
-      #                              --dart-define=ORG_NAME="$ORG_NAME" \
-      #                              --dart-define=VERSION_NAME="$VERSION_NAME" \
-      #                              --dart-define=VERSION_CODE="$VERSION_CODE" \
-      #                              --dart-define=EMAIL_ID="$EMAIL_ID" \
-      #                              --dart-define=IS_SPLASH="$IS_SPLASH" \
-      #                              --dart-define=SPLASH="$SPLASH" \
-      #                              --dart-define=SPLASH_BG="$SPLASH_BG" \
-      #                              --dart-define=SPLASH_ANIMATION="$SPLASH_ANIMATION" \
-      #                              --dart-define=SPLASH_BG_COLOR="$SPLASH_BG_COLOR" \
-      #                              --dart-define=SPLASH_TAGLINE="$SPLASH_TAGLINE" \
-      #                              --dart-define=SPLASH_TAGLINE_COLOR="$SPLASH_TAGLINE_COLOR" \
-      #                              --dart-define=SPLASH_DURATION="$SPLASH_DURATION" \
-      #                              --dart-define=IS_PULLDOWN="$IS_PULLDOWN" \
-      #                              --dart-define=LOGO_URL="$LOGO_URL" \
-      #                              --dart-define=IS_BOTTOMMENU="$IS_BOTTOMMENU" \
-      #                              --dart-define=BOTTOMMENU_ITEMS="$BOTTOMMENU_ITEMS" \
-      #                              --dart-define=BOTTOMMENU_BG_COLOR="$BOTTOMMENU_BG_COLOR" \
-      #                              --dart-define=BOTTOMMENU_ICON_COLOR="$BOTTOMMENU_ICON_COLOR" \
-      #                              --dart-define=BOTTOMMENU_TEXT_COLOR="$BOTTOMMENU_TEXT_COLOR" \
-      #                              --dart-define=BOTTOMMENU_FONT="$BOTTOMMENU_FONT" \
-      #                              --dart-define=BOTTOMMENU_FONT_SIZE="$BOTTOMMENU_FONT_SIZE" \
-      #                              --dart-define=BOTTOMMENU_FONT_BOLD="$BOTTOMMENU_FONT_BOLD" \
-      #                              --dart-define=BOTTOMMENU_FONT_ITALIC="$BOTTOMMENU_FONT_ITALIC" \
-      #                              --dart-define=BOTTOMMENU_ACTIVE_TAB_COLOR="$BOTTOMMENU_ACTIVE_TAB_COLOR" \
-      #                              --dart-define=BOTTOMMENU_ICON_POSITION="$BOTTOMMENU_ICON_POSITION" \
-      #                              --dart-define=BOTTOMMENU_VISIBLE_ON="$BOTTOMMENU_VISIBLE_ON" \
-      #                              --dart-define=IS_DEEPLINK="$IS_DEEPLINK" \
-      #                              --dart-define=IS_LOAD_IND="$IS_LOAD_IND" \
-      #                              --dart-define=IS_CHATBOT="$IS_CHATBOT" \
-      #                              --dart-define=IS_CAMERA="$IS_CAMERA" \
-      #                              --dart-define=IS_LOCATION="$IS_LOCATION" \
-      #                              --dart-define=IS_BIOMETRIC="$IS_BIOMETRIC" \
-      #                              --dart-define=IS_MIC="$IS_MIC" \
-      #                              --dart-define=IS_CONTACT="$IS_CONTACT" \
-      #                              --dart-define=IS_CALENDAR="$IS_CALENDAR" \
-      #                              --dart-define=IS_NOTIFICATION="$IS_NOTIFICATION" \
-      #                              --dart-define=IS_STORAGE="$IS_STORAGE" \
-      #                              --dart-define=firebase_config_android="$firebase_config_android" \
-      #                              --dart-define=firebase_config_ios="$firebase_config_ios" \
-      #                              --dart-define=APNS_KEY_ID="$APNS_KEY_ID" \
-      #                              --dart-define=APPLE_TEAM_ID="$APPLE_TEAM_ID" \
-      #                              --dart-define=APNS_AUTH_KEY_URL="$APNS_AUTH_KEY_URL" \
-      #                              --dart-define=KEY_STORE="$KEY_STORE" \
-      #                              --dart-define=CM_KEYSTORE_PASSWORD="$CM_KEYSTORE_PASSWORD" \
-      #                              --dart-define=CM_KEY_ALIAS="$CM_KEY_ALIAS" \
-      #                              --dart-define=CM_KEY_PASSWORD="$CM_KEY_PASSWORD" \
-      #                              --export-options-plist=ExportOptions.plist > flutter_build_ios.log
 
       - name: 🏗 Archive iOS App with Xcode
         script: |
@@ -3441,20 +3520,20 @@ workflows:
           set -a
           source "$CM_ENV"
           set +a
-                echo "✅ PROFILE_UUID=$PROFILE_UUID"
-                echo "✅ PROFILE_NAME=$PROFILE_NAME"
-                #echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          echo "✅ PROFILE_UUID=$PROFILE_UUID"
+          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
 
-              xcodebuild -workspace "$XCODE_WORKSPACE" \
-                  -scheme "$XCODE_SCHEME" \
-                  -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
-                  -sdk iphoneos \
-                  -configuration Release \
-                  archive \
-                  DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-                  PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-                  CODE_SIGN_IDENTITY="Apple Distribution" \
-                  PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
+          xcodebuild -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
+            -sdk iphoneos \
+            -configuration Release \
+            archive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
 
       - name: 📦 Export signed IPA
         script: |
@@ -3464,40 +3543,14 @@ workflows:
             -exportPath "$CM_BUILD_DIR/ios_output" \
             -exportOptionsPlist ExportOptions.plist
           echo "Contents of output directory:"
-            ls -lh "$CM_BUILD_DIR/ios_output"
+          ls -lh "$CM_BUILD_DIR/ios_output"
 
-            if [[ -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
-          echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
-            else
+          if [[ -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
+            echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
+          else
             echo "❌ IPA file was not generated!"
             exit 1
-            fi
-      #          echo "✅ Creating ExportOptions.plist:"
-      #            cat > ExportOptions.plist <<EOF
-      #            <?xml version="1.0" encoding="UTF-8"?>
-      #            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      #            <plist version="1.0">
-      #            <dict>
-      #              <key>method</key>
-      #              <string>app-store-connect</string>
-      #              <key>signingStyle</key>
-      #              <string>manual</string>
-      #              <key>teamID</key>
-      #              <string>$APPLE_TEAM_ID</string>
-      #              <key>provisioningProfiles</key>
-      #              <dict>
-      #                <key>$BUNDLE_ID</key>
-      #                <string>$PROFILE_NAME</string>
-      #              </dict>
-      #              <key>compileBitcode</key>
-      #              <false/>
-      #              <key>stripSwiftSymbols</key>
-      #              <true/>
-      #              <key>signingCertificate</key>
-      #              <string>$CODE_SIGN_IDENTITY</string>
-      #            </dict>
-      #            </plist>
-      #            EOF
+          fi
 
       - name: Upload to TestFlight
         script: |
@@ -3505,14 +3558,15 @@ workflows:
           set -a
           source "$CM_ENV"
           set +a
-               echo "✅ PROFILE_UUID=$PROFILE_UUID"
-               echo "✅ PROFILE_NAME=$PROFILE_NAME"
-               #echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          echo "✅ PROFILE_UUID=$PROFILE_UUID"
+          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+          
           xcrun altool --upload-app \
             --type ios \
             --file build/ios_output/Runner.ipa \
             --apiKey "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --apiIssuer "$PROFILE_UUID"
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
     artifacts:
       - build/ios_output/Runner.ipa
       - build/ios/ipa/*.ipa
@@ -3522,14 +3576,6 @@ workflows:
       - $CM_BUILD_DIR/ios_output/*.ipa
       - $CM_BUILD_DIR/*.p12
       - /tmp/xcodebuild_logs/*.log
-    #      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-    #    artifacts:
-    #      - build/ios/iphoneos/Runner.app
-    #      - build/ios/ipa/*.ipa
-    #      - /tmp/xcodebuild_logs/*.log
-    #      - flutter_build_ios.log
-    #      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-
     publishing:
       email:
         recipients:
