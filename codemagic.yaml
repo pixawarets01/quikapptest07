@@ -97,7 +97,7 @@ scripts:
         
         echo "*********** Bottom Navigation Configuration ***********"
         echo "BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS"
-        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR  
+        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"
         echo "BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR"
         echo "BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR"
         echo "BOTTOMMENU_FONT: $BOTTOMMENU_FONT"
