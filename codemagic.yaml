@@ -3378,6 +3378,17 @@ workflows:
             
             echo "🧩 Building Flutter iOS app with optimizations..."
             
+            # Fix Swift compiler issues with Firebase and Xcode 15.4
+            echo "🔧 Applying Swift compiler fixes for Xcode 15.4..."
+            
+            # Make the fix script executable and run it
+            chmod +x lib/scripts/utils/fix_swift_compiler.sh
+            if bash lib/scripts/utils/fix_swift_compiler.sh; then
+              echo "✅ Swift compiler fixes applied successfully"
+            else
+              echo "⚠️ Swift compiler fixes failed, continuing with build..."
+            fi
+            
             # Use optimized Flutter build with all dart-define parameters
             flutter build ios --release --no-codesign \
               --dart-define=WEB_URL="$WEB_URL" \
