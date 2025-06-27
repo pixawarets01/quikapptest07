@@ -51,8 +51,8 @@ scripts:
         echo "APP_NAME: $APP_NAME"
         echo "ORG_NAME: $ORG_NAME"
         echo "WEB_URL: $WEB_URL"
-        echo "VERSION_NAME: $VERSION_NAME      
-        echo "VERSION_CODE: $VERSION_CODE"
+        echo "VERSION_NAME: $VERSION_NAME"      
+        echo "VERSION_CODE: $VERSION_CODE" 
         echo "PKG_NAME: $PKG_NAME"
         echo "BUNDLE_ID: $BUNDLE_ID"
 
@@ -97,7 +97,7 @@ scripts:
         
         echo "*********** Bottom Navigation Configuration ***********"
         echo "BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS"
-        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR  
+        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"  
         echo "BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR"
         echo "BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR"
         echo "BOTTOMMENU_FONT: $BOTTOMMENU_FONT"
@@ -2444,20 +2444,6 @@ workflows:
           # Run the auto iOS build script
           bash lib/scripts/ios/auto_main.sh
 
-      - name: Generate Apple Assets (Optional - if P8 file provided)
-        script: |
-          echo "🍎 Checking if Apple Assets generation is needed..."
-          
-          # Make the wrapper script executable
-          chmod +x lib/scripts/utils/generate_apple_assets.sh
-          
-          # Run the Apple Assets Generator wrapper script
-          if bash lib/scripts/utils/generate_apple_assets.sh; then
-            echo "✅ Apple assets generation completed successfully!"
-          else
-            echo "❌ Apple assets generation failed, continuing with existing certificates..."
-          fi
-
     artifacts:
       - output/ios/*.ipa
       - build/ios/ipa/*.ipa
@@ -2988,7 +2974,6 @@ workflows:
       # 🔧 Additional Build Artifacts
       - output/ios/
       - build/ios/
-      - output/apple_assets/
   ios-workflow2:
     name: iOS Workflow
     instance_type: mac_mini_m1
