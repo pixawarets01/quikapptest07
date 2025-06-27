@@ -97,7 +97,7 @@ scripts:
         
         echo "*********** Bottom Navigation Configuration ***********"
         echo "BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS"
-        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"  
+        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR  
         echo "BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR"
         echo "BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR"
         echo "BOTTOMMENU_FONT: $BOTTOMMENU_FONT"
@@ -3327,7 +3327,62 @@ workflows:
         script: |
           rbenv install 3.3.0 || true
           rbenv global 3.3.0
-          gem install cocoapods -v 1.16.2
+          gem install cocoapods -v 1.15.2
+          gem install activesupport -v 6.1.7.3
+
+      - name: 📦 Install CocoaPods
+        script: |
+          cd ios
+          echo "🧹 Cleaning previous CocoaPods installation..."
+          rm -rf Pods Podfile.lock
+          pod cache clean --all
+          
+          echo "📦 Installing CocoaPods dependencies..."
+          pod install --repo-update --verbose
+          
+          if [ $? -ne 0 ]; then
+            echo "⚠️ First attempt failed, trying with legacy mode..."
+            pod install --repo-update --verbose --legacy
+          fi
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ CocoaPods installation failed"
+            exit 1
+          fi
+          
+          echo "✅ CocoaPods installation completed successfully"
+          cd ..
+
+      - name: 🔧 Configure Manual Code Signing
+        script: |
+          echo "🔧 Configuring manual code signing for Xcode project..."
+          cd ios
+          
+          # Update Xcode project settings for manual signing
+          ruby <<'RUBY'
+          require 'xcodeproj'
+
+          project = Xcodeproj::Project.open('Runner.xcodeproj')
+          project.targets.each do |target|
+            if target.name == 'Runner'
+              target.build_configurations.each do |config|
+                config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+                config.build_settings['DEVELOPMENT_TEAM'] = ENV['APPLE_TEAM_ID']
+                config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']
+                config.build_settings['CODE_SIGN_IDENTITY'] = ENV['CODE_SIGN_IDENTITY']
+                config.build_settings['CODE_SIGNING_REQUIRED'] = 'YES'
+                config.build_settings['CODE_SIGNING_ALLOWED'] = 'YES'
+                config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ENV['CODE_SIGN_IDENTITY']
+                config.build_settings['CODE_SIGN_INJECT_BASE_ENTITLEMENTS'] = 'YES'
+                config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
+              end
+            end
+          end
+
+          project.save
+          puts "✅ Manual code signing configured successfully"
+          RUBY
+          cd ..
 
       - name: 📝 Inject dynamic Podfile
         script: |
@@ -3377,19 +3432,6 @@ workflows:
             target 'RunnerTests' do
               inherit! :search_paths
             end
-
-            pre_install do |installer|
-              puts "🔧 Injecting manual signing"
-              installer.pod_targets.each do |pod|
-                pod.build_configurations.each do |config|
-                  config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-                  config.build_settings['DEVELOPMENT_TEAM'] = '${APPLE_TEAM_ID}'
-                  config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${PROFILE_NAME}'
-                  config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-                  config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-                end
-              end
-            end
           end
 
           post_install do |installer|
@@ -3399,16 +3441,13 @@ workflows:
                 config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
                 config.build_settings['ENABLE_BITCODE'] = 'NO'
                 config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+                # Disable code signing for pods to avoid conflicts
+                config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+                config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
               end
             end
           end
           EOF
-
-      - name: 📦 Install CocoaPods
-        script: |
-          cd ios
-          pod install --repo-update
-          cd ..
 
       - name: Generate ExportOptions Build
         script: |
