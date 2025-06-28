@@ -2054,6 +2054,16 @@ workflows:
         <<: *app_config
         WORKFLOW_ID: "ios-workflow"
         BUNDLE_ID: $BUNDLE_ID
+        PROFILE_TYPE: $PROFILE_TYPE # app-store, ad-hoc, enterprise, development
+        APPLE_ID: $APPLE_ID # Your Apple Developer email
+        APPLE_ID_PASSWORD: $APPLE_ID_PASSWORD
+        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_API_KEY_PATH: $APP_STORE_CONNECT_API_KEY_PATH
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APPLE_TEAM_ID: $APPLE_TEAM_ID
+        APNS_KEY_ID: $APNS_KEY_ID
+        IS_TESTFLIGHT: $IS_TESTFLIGHT
+        SKIP_APP_STORE_CONNECT_API: "true" # Skip problematic App Store Connect API
 
         # 🔧 Feature Flags
         PUSH_NOTIFY: $PUSH_NOTIFY

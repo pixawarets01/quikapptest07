@@ -539,6 +539,71 @@ EOF
     # If all export methods failed, try development export
     log_warn "All export methods failed, trying development export..."
     
+    # Try using existing certificates without keychain installation
+    if [ -n "${CERT_P12_URL:-}" ] && [ -n "${PROFILE_URL:-}" ]; then
+        log_info "Trying certificate-based export without keychain installation..."
+        
+        # Download certificates to expected locations
+        local cert_dir="/tmp/certs_export"
+        mkdir -p "$cert_dir"
+        
+        # Download provisioning profile to expected location
+        local profile_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+        mkdir -p "$profile_dir"
+        
+        if curl -L -o "$profile_dir/profile.mobileprovision" "${PROFILE_URL}" 2>/dev/null; then
+            log_success "Provisioning profile placed in expected location"
+        else
+            log_error "Failed to download provisioning profile"
+        fi
+        
+        # Create export options that use the certificates directly
+        local cert_export_options="ios/CertExportOptions.plist"
+        cat > "$cert_export_options" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string>
+    <key>teamID</key>
+    <string>${APPLE_TEAM_ID:-}</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>${BUNDLE_ID:-}</key>
+        <string>profile.mobileprovision</string>
+    </dict>
+</dict>
+</plist>
+EOF
+        
+        log_info "Trying certificate-based export..."
+        if xcodebuild -exportArchive \
+            -archivePath "$archive_path" \
+            -exportPath "$export_path" \
+            -exportOptionsPlist "$cert_export_options" \
+            -allowProvisioningUpdates; then
+            log_success "Certificate-based export completed successfully!"
+            rm -rf "$cert_dir"
+            return 0
+        else
+            log_error "Certificate-based export failed"
+            rm -rf "$cert_dir"
+        fi
+    fi
+    
     # Create development export options
     local dev_export_options="ios/DevExportOptions.plist"
     cat > "$dev_export_options" << EOF
