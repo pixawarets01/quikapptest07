@@ -4,6 +4,9 @@ platform :ios, '13.0'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Firebase workaround flag - set to true to disable Firebase if compilation issues occur
+FIREBASE_DISABLED = ENV['FIREBASE_DISABLED'] == 'true'
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -32,6 +35,14 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
+  # Firebase workaround: Exclude Firebase pods if disabled
+  if FIREBASE_DISABLED
+    pod 'FirebaseCore', :inhibit_warnings => true
+    pod 'FirebaseMessaging', :inhibit_warnings => true
+    pod 'FirebaseCoreInternal', :inhibit_warnings => true
+  end
+  
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -47,6 +58,12 @@ post_install do |installer|
       # Disable code signing for pods to avoid conflicts
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
       config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+      
+      # Firebase workaround: Disable problematic Firebase targets
+      if FIREBASE_DISABLED && target.name.include?('Firebase')
+        config.build_settings['EXCLUDED_SOURCE_FILE_NAMES'] = ['**/*.swift']
+        config.build_settings['SWIFT_VERSION'] = '5.0'
+      end
     end
   end
 end

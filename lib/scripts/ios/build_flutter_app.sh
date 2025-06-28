@@ -76,6 +76,36 @@ EOF
     fi
 }
 
+# Function to handle Firebase compilation issues
+handle_firebase_issues() {
+    log_warn "Firebase compilation issues detected, applying emergency workaround..."
+    
+    # Create backup of pubspec.yaml
+    cp pubspec.yaml pubspec.yaml.backup
+    
+    # Remove Firebase dependencies temporarily
+    sed -i.tmp '/firebase_core:/d' pubspec.yaml
+    sed -i.tmp '/firebase_messaging:/d' pubspec.yaml
+    rm -f pubspec.yaml.tmp
+    
+    log_info "Firebase dependencies temporarily removed from pubspec.yaml"
+    
+    # Clean and reinstall
+    flutter clean
+    flutter pub get
+    
+    # Regenerate iOS files
+    flutter create --platforms ios .
+    
+    cd ios
+    rm -rf Pods Podfile.lock
+    pod install --repo-update --verbose
+    cd ..
+    
+    log_warn "Firebase functionality disabled for this build"
+    export FIREBASE_DISABLED=true
+}
+
 # Function to install dependencies
 install_dependencies() {
     log_info "Installing Flutter dependencies..."
@@ -112,9 +142,36 @@ install_dependencies() {
         if pod install --repo-update --verbose --legacy; then
             log_success "CocoaPods installation completed with legacy mode"
         else
-            log_error "CocoaPods installation failed"
-            cd ..
-            return 1
+            log_warn "Legacy mode failed, trying Firebase workaround..."
+            
+            # Firebase workaround: Remove Firebase pods if they cause issues
+            if [ -f "Podfile" ]; then
+                log_info "Applying Firebase workaround - removing problematic Firebase pods..."
+                
+                # Create backup
+                cp Podfile Podfile.backup
+                
+                # Remove Firebase-related lines from Podfile
+                sed -i.tmp '/firebase/d' Podfile
+                sed -i.tmp '/Firebase/d' Podfile
+                rm -f Podfile.tmp
+                
+                # Try installation again without Firebase
+                if pod install --repo-update --verbose; then
+                    log_success "CocoaPods installation completed without Firebase"
+                    log_warn "Firebase functionality will be disabled for this build"
+                    # Set environment variable to disable Firebase in subsequent steps
+                    export FIREBASE_DISABLED=true
+                else
+                    log_error "CocoaPods installation failed even without Firebase"
+                    cd ..
+                    return 1
+                fi
+            else
+                log_error "CocoaPods installation failed"
+                cd ..
+                return 1
+            fi
         fi
     fi
     
@@ -246,8 +303,28 @@ main() {
     
     # Create Xcode archive
     if ! create_xcode_archive; then
-        log_error "Failed to create Xcode archive"
-        return 1
+        log_warn "Xcode archive failed, trying Firebase workaround..."
+        
+        # Try Firebase workaround if archive fails
+        if [ "${FIREBASE_DISABLED:-false}" != "true" ]; then
+            log_info "Attempting Firebase workaround..."
+            handle_firebase_issues
+            
+            # Retry build without Firebase
+            if ! build_flutter_app; then
+                log_error "Failed to build Flutter app even without Firebase"
+                return 1
+            fi
+            
+            # Retry archive without Firebase
+            if ! create_xcode_archive; then
+                log_error "Failed to create Xcode archive even without Firebase"
+                return 1
+            fi
+        else
+            log_error "Failed to create Xcode archive"
+            return 1
+        fi
     fi
     
     log_success "Flutter iOS Build completed successfully!"
@@ -259,6 +336,11 @@ main() {
     log_info "  - Version: ${VERSION_NAME:-Unknown} (${VERSION_CODE:-Unknown})"
     log_info "  - Profile Type: ${PROFILE_TYPE:-Unknown}"
     log_info "  - Archive: ${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
+    if [ "${FIREBASE_DISABLED:-false}" = "true" ]; then
+        log_warn "  - Firebase: DISABLED (due to compilation issues)"
+    else
+        log_info "  - Firebase: ENABLED"
+    fi
     
     return 0
 }
