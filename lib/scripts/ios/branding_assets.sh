@@ -1,6 +1,6 @@
 ﻿#!/bin/bash
 
-#  iOS Branding Assets Handler
+# iOS Branding Assets Handler
 # Purpose: Download and process branding assets for iOS builds
 
 set -euo pipefail
@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$0")"
 source "${SCRIPT_DIR}/utils.sh"
 
-log_info " Starting iOS Branding Assets Setup..."
+log_info "Starting iOS Branding Assets Setup..."
 
 # Function to download asset with multiple fallbacks
 download_asset_with_fallbacks() {
@@ -19,11 +19,11 @@ download_asset_with_fallbacks() {
     local max_retries=5
     local retry_delay=3
     
-    log_info " Downloading $asset_name from: $url"
+    log_info "Downloading $asset_name from: $url"
     
     # Try multiple download methods
     for attempt in $(seq 1 $max_retries); do
-        log_info " Download attempt $attempt/$max_retries for $asset_name"
+        log_info "Download attempt $attempt/$max_retries for $asset_name"
         
         # Method 1: curl with timeout and retry
         if curl -L --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 2 \
@@ -34,7 +34,7 @@ download_asset_with_fallbacks() {
         
         # Method 2: wget as fallback
         if command_exists wget; then
-            log_info " Trying wget for $asset_name..."
+            log_info "Trying wget for $asset_name..."
             if wget --timeout=30 --tries=3 --output-document="$output_path" "$url" 2>/dev/null; then
                 log_success "$asset_name downloaded successfully with wget"
                 return 0
@@ -58,7 +58,7 @@ create_fallback_asset() {
     local output_path="$1"
     local asset_name="$2"
     
-    log_info " Creating fallback asset for $asset_name"
+    log_info "Creating fallback asset for $asset_name"
     
     # Create a minimal PNG as fallback
     echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" | base64 -d > "$output_path" 2>/dev/null || {
@@ -69,7 +69,7 @@ create_fallback_asset() {
 
 # Main execution
 main() {
-    log_info " iOS Branding Assets Setup Starting..."
+    log_info "iOS Branding Assets Setup Starting..."
     
     # Setup directories
     ensure_directory "assets/images"
@@ -108,7 +108,7 @@ main() {
         log_success "Splash copied to iOS LaunchImage"
     fi
     
-    log_success " iOS Branding Assets Setup completed successfully!"
+    log_success "iOS Branding Assets Setup completed successfully!"
     return 0
 }
 

@@ -1,6 +1,6 @@
 ﻿#!/bin/bash
 
-#  Main iOS Build Orchestration Script
+# Main iOS Build Orchestration Script
 # Purpose: Orchestrate the entire iOS build workflow
 
 set -euo pipefail
@@ -9,11 +9,24 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$0")"
 source "${SCRIPT_DIR}/utils.sh"
 
-log_info " Starting iOS Build Workflow..."
+log_info "Starting iOS Build Workflow..."
+
+# Function to send email notifications
+send_email() {
+    local email_type="$1"
+    local platform="$2"
+    local build_id="$3"
+    local error_message="$4"
+    
+    if [ "${ENABLE_EMAIL_NOTIFICATIONS:-false}" = "true" ]; then
+        log_info "Sending $email_type email for $platform build $build_id"
+        "${SCRIPT_DIR}/email_notifications.sh" "$email_type" "$platform" "$build_id" "$error_message" || log_warn "Failed to send email notification"
+    fi
+}
 
 # Function to load environment variables
 load_environment_variables() {
-    log_info " Loading environment variables..."
+    log_info "Loading environment variables..."
     
     # Validate essential variables
     if [ -z "${BUNDLE_ID:-}" ]; then
@@ -38,7 +51,7 @@ load_environment_variables() {
 
 # Main execution function
 main() {
-    log_info " iOS Build Workflow Starting..."
+    log_info "iOS Build Workflow Starting..."
     
     # Load environment variables
     if ! load_environment_variables; then
@@ -104,8 +117,8 @@ main() {
         "${SCRIPT_DIR}/email_notifications.sh" "build_success" "iOS" "${CM_BUILD_ID:-unknown}" || log_warn "Failed to send build success email."
     fi
     
-    log_success " iOS workflow completed successfully!"
-    log_info " Build Summary:"
+    log_success "iOS workflow completed successfully!"
+    log_info "Build Summary:"
     log_info "   App: ${APP_NAME:-Unknown} v${VERSION_NAME:-Unknown}"
     log_info "   Bundle ID: ${BUNDLE_ID:-Unknown}"
     log_info "   Profile Type: ${PROFILE_TYPE:-Unknown}"
