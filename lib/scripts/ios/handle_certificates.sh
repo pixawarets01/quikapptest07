@@ -72,7 +72,47 @@ validate_file() {
     return 0
 }
 
-# Function to download and install P12 certificate
+# Function to check existing certificates in keychain
+check_existing_certificates() {
+    local keychain_name="ios-build.keychain"
+    log_info "Checking existing certificates in keychain..."
+    
+    # List all code signing identities from dedicated keychain first
+    local identities
+    identities=$(security find-identity -v -p codesigning "$keychain_name" 2>/dev/null)
+    
+    if [ -z "$identities" ]; then
+        # Fallback to checking all keychains
+        identities=$(security find-identity -v -p codesigning 2>/dev/null)
+    fi
+    
+    if [ -n "$identities" ]; then
+        log_info "Found existing code signing identities:"
+        echo "$identities" | while read line; do
+            log_info "  $line"
+        done
+        
+        # Check for iOS distribution certificates specifically
+        local ios_certs
+        ios_certs=$(echo "$identities" | grep -E "iPhone Distribution|iOS Distribution|Apple Distribution")
+        
+        if [ -n "$ios_certs" ]; then
+            log_success "Found existing iOS distribution certificates!"
+            echo "$ios_certs" | while read line; do
+                log_success "  $line"
+            done
+            return 0
+        else
+            log_info "No iOS distribution certificates found"
+            return 1
+        fi
+    else
+        log_info "No code signing identities found in keychain"
+        return 1
+    fi
+}
+
+# Function to install P12 certificate
 install_p12_certificate() {
     local cert_url="$1"
     local cert_file="ios/certificates/certificate.p12"
@@ -93,21 +133,43 @@ install_p12_certificate() {
     
     # Get provided password
     local provided_password="${CERT_PASSWORD:-}"
-    log_info "Installing certificate to keychain with provided password..."
+    local keychain_name="ios-build.keychain"
+    local keychain_password="${KEYCHAIN_PASSWORD:-build123}"
+    
+    log_info "Setting up dedicated keychain for certificate installation..."
+    
+    # Delete existing keychain if it exists
+    security delete-keychain "$keychain_name" 2>/dev/null || true
+    
+    # Create new keychain
+    if ! security create-keychain -p "$keychain_password" "$keychain_name"; then
+        log_error "Failed to create keychain"
+        return 1
+    fi
+    
+    # Configure keychain settings
+    security set-keychain-settings -lut 21600 "$keychain_name"
+    security unlock-keychain -p "$keychain_password" "$keychain_name"
     
     # Try installation with provided password first
     if [ -n "$provided_password" ] && [ "$provided_password" != "set" ] && [ "$provided_password" != "true" ] && [ "$provided_password" != "false" ] && [ "$provided_password" != "SET" ] && [ "$provided_password" != "your_password" ]; then
         log_info "Attempting installation with provided password: '$provided_password'"
         
-        # Try multiple installation methods with provided password
-        if security import "$cert_file" -k ~/Library/Keychains/login.keychain-db -P "$provided_password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
+        if security import "$cert_file" -k "$keychain_name" -P "$provided_password" -T /usr/bin/codesign; then
+            log_success "P12 certificate imported successfully with provided password"
+            
+            # Set key partition list for access
+            if security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_name"; then
+                log_success "Key partition list set successfully"
+            else
+                log_warn "Failed to set key partition list, but continuing..."
+            fi
+            
+            # Set as default keychain
+            security list-keychains -s "$keychain_name"
+            security default-keychain -s "$keychain_name"
+            
             log_success "P12 certificate installed successfully with provided password"
-            return 0
-        elif security import "$cert_file" -k login.keychain -P "$provided_password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
-            log_success "P12 certificate installed successfully with provided password (alternative keychain)"
-            return 0
-        elif security import "$cert_file" -P "$provided_password" -A 2>/dev/null; then
-            log_success "P12 certificate installed successfully with provided password (default keychain)"
             return 0
         else
             log_warn "Installation failed with provided password: '$provided_password'"
@@ -118,14 +180,17 @@ install_p12_certificate() {
     
     # Try with empty password
     log_info "Attempting installation with empty password..."
-    if security import "$cert_file" -k ~/Library/Keychains/login.keychain-db -P "" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
+    if security import "$cert_file" -k "$keychain_name" -P "" -T /usr/bin/codesign; then
+        log_success "P12 certificate imported successfully with empty password"
+        
+        # Set key partition list for access
+        security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_name" 2>/dev/null || true
+        
+        # Set as default keychain
+        security list-keychains -s "$keychain_name"
+        security default-keychain -s "$keychain_name"
+        
         log_success "P12 certificate installed successfully with empty password"
-        return 0
-    elif security import "$cert_file" -k login.keychain -P "" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
-        log_success "P12 certificate installed successfully with empty password (alternative keychain)"
-        return 0
-    elif security import "$cert_file" -P "" -A 2>/dev/null; then
-        log_success "P12 certificate installed successfully with empty password (default keychain)"
         return 0
     fi
     
@@ -135,14 +200,18 @@ install_p12_certificate() {
     
     for password in "${common_passwords[@]}"; do
         log_info "Trying password: '$password'"
-        if security import "$cert_file" -k ~/Library/Keychains/login.keychain-db -P "$password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
+        
+        if security import "$cert_file" -k "$keychain_name" -P "$password" -T /usr/bin/codesign; then
+            log_success "P12 certificate imported successfully with password: '$password'"
+            
+            # Set key partition list for access
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_name" 2>/dev/null || true
+            
+            # Set as default keychain
+            security list-keychains -s "$keychain_name"
+            security default-keychain -s "$keychain_name"
+            
             log_success "P12 certificate installed successfully with password: '$password'"
-            return 0
-        elif security import "$cert_file" -k login.keychain -P "$password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
-            log_success "P12 certificate installed successfully with password: '$password' (alternative keychain)"
-            return 0
-        elif security import "$cert_file" -P "$password" -A 2>/dev/null; then
-            log_success "P12 certificate installed successfully with password: '$password' (default keychain)"
             return 0
         fi
     done
@@ -189,7 +258,7 @@ install_cer_key_certificate() {
     # First priority: Use provided CERT_PASSWORD
     if [ -n "$provided_password" ] && [ "$provided_password" != "set" ] && [ "$provided_password" != "true" ] && [ "$provided_password" != "false" ] && [ "$provided_password" != "SET" ] && [ "$provided_password" != "your_password" ]; then
         log_info "Using provided CERT_PASSWORD for P12 conversion: '$provided_password'"
-        if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:$provided_password" -name "iOS Distribution Certificate" 2>/dev/null; then
+        if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:$provided_password" -name "iOS Distribution Certificate" -legacy 2>/dev/null; then
             log_success "Certificate converted to P12 format with provided password"
             p12_password="$provided_password"
         else
@@ -202,7 +271,7 @@ install_cer_key_certificate() {
     # Second priority: Try empty password if provided password failed or wasn't provided
     if [ ! -f "$p12_file" ]; then
         log_info "Trying P12 conversion with empty password..."
-        if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:" -name "iOS Distribution Certificate" 2>/dev/null; then
+        if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:" -name "iOS Distribution Certificate" -legacy 2>/dev/null; then
             log_success "Certificate converted to P12 format with empty password"
             p12_password=""
         else
@@ -217,7 +286,7 @@ install_cer_key_certificate() {
         
         for pwd in "${conversion_passwords[@]}"; do
             log_info "Trying P12 conversion with fallback password: '$pwd'"
-            if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:$pwd" -name "iOS Distribution Certificate" 2>/dev/null; then
+            if openssl pkcs12 -export -in "$cer_file" -inkey "$key_file" -out "$p12_file" -password "pass:$pwd" -name "iOS Distribution Certificate" -legacy 2>/dev/null; then
                 log_success "Certificate converted to P12 format with fallback password: '$pwd'"
                 p12_password="$pwd"
                 break
@@ -238,18 +307,33 @@ install_cer_key_certificate() {
     
     log_info "Installing converted certificate to keychain..."
     
+    # Use the same dedicated keychain approach
+    local keychain_name="ios-build.keychain"
+    local keychain_password="${KEYCHAIN_PASSWORD:-build123}"
+    
     # Try installation with the password used for conversion
     log_info "Attempting installation with conversion password: '${p12_password:-<empty>}'"
     
-    # Try multiple installation methods
-    if security import "$p12_file" -k ~/Library/Keychains/login.keychain-db -P "$p12_password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
+    # Create keychain if it doesn't exist (should already exist from P12 attempt)
+    security create-keychain -p "$keychain_password" "$keychain_name" 2>/dev/null || true
+    security set-keychain-settings -lut 21600 "$keychain_name"
+    security unlock-keychain -p "$keychain_password" "$keychain_name"
+    
+    if security import "$p12_file" -k "$keychain_name" -P "$p12_password" -T /usr/bin/codesign; then
+        log_success "Converted certificate imported successfully"
+        
+        # Set key partition list for access
+        if security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_name"; then
+            log_success "Key partition list set successfully"
+        else
+            log_warn "Failed to set key partition list, but continuing..."
+        fi
+        
+        # Set as default keychain
+        security list-keychains -s "$keychain_name"
+        security default-keychain -s "$keychain_name"
+        
         log_success "Converted certificate installed successfully"
-        return 0
-    elif security import "$p12_file" -k login.keychain -P "$p12_password" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null; then
-        log_success "Converted certificate installed successfully (alternative keychain)"
-        return 0
-    elif security import "$p12_file" -P "$p12_password" -A 2>/dev/null; then
-        log_success "Converted certificate installed successfully (default keychain)"
         return 0
     else
         log_error "Failed to install converted certificate"
@@ -380,6 +464,7 @@ detect_certificate_password() {
 extract_certificate_info() {
     local cert_file="$1"
     local cert_type="$2"  # "p12" or "installed"
+    local keychain_name="ios-build.keychain"
     
     log_info "Extracting certificate information from $cert_type certificate..."
     
@@ -392,7 +477,13 @@ extract_certificate_info() {
     local max_attempts=5
     
     while [ $attempts -lt $max_attempts ]; do
-        cert_identity=$(security find-identity -v -p codesigning 2>/dev/null | grep -E "iPhone Distribution|iOS Distribution|Apple Distribution" | head -1)
+        # Check both dedicated keychain and all keychains
+        cert_identity=$(security find-identity -v -p codesigning "$keychain_name" 2>/dev/null | grep -E "iPhone Distribution|iOS Distribution|Apple Distribution" | head -1)
+        
+        if [ -z "$cert_identity" ]; then
+            # Fallback to checking all keychains
+            cert_identity=$(security find-identity -v -p codesigning 2>/dev/null | grep -E "iPhone Distribution|iOS Distribution|Apple Distribution" | head -1)
+        fi
         
         if [ -n "$cert_identity" ]; then
             break
@@ -413,7 +504,12 @@ extract_certificate_info() {
         
         # Get more certificate details
         local cert_details
-        cert_details=$(security find-certificate -c "$cert_name" -p 2>/dev/null | openssl x509 -text -noout 2>/dev/null)
+        cert_details=$(security find-certificate -c "$cert_name" -p "$keychain_name" 2>/dev/null | openssl x509 -text -noout 2>/dev/null)
+        
+        if [ -z "$cert_details" ]; then
+            # Fallback to default keychain
+            cert_details=$(security find-certificate -c "$cert_name" -p 2>/dev/null | openssl x509 -text -noout 2>/dev/null)
+        fi
         
         if [ -n "$cert_details" ]; then
             local subject=$(echo "$cert_details" | grep "Subject:" | sed 's/.*Subject: //')
@@ -444,7 +540,11 @@ extract_certificate_info() {
         fi
     else
         log_error "No valid iOS distribution certificate found in keychain after $max_attempts attempts"
-        log_info "Available certificates in keychain:"
+        log_info "Available certificates in dedicated keychain:"
+        security find-identity -v -p codesigning "$keychain_name" 2>/dev/null | while read line; do
+            log_info "  $line"
+        done
+        log_info "Available certificates in all keychains:"
         security find-identity -v -p codesigning 2>/dev/null | while read line; do
             log_info "  $line"
         done
@@ -596,8 +696,17 @@ main() {
     log_info "  2. CER+KEY conversion with provided CERT_PASSWORD (or empty if not provided)"
     log_info "  3. Fallback methods with common passwords"
 
-    # Try P12 certificate first if URL is provided
-    if [[ -n "${CERT_P12_URL:-}" ]] && [[ "${CERT_P12_URL}" == http* ]]; then
+    # First, check if we already have valid certificates
+    log_info "--- Checking for Existing Certificates ---"
+    if check_existing_certificates; then
+        log_success "Valid iOS distribution certificate already exists in keychain!"
+        cert_installed=true
+    else
+        log_info "No valid certificates found, proceeding with installation..."
+    fi
+
+    # Try P12 certificate first if URL is provided and no cert installed yet
+    if [ "$cert_installed" = false ] && [[ -n "${CERT_P12_URL:-}" ]] && [[ "${CERT_P12_URL}" == http* ]]; then
         log_info "P12 certificate URL provided, attempting installation..."
         log_info "P12 URL: ${CERT_P12_URL}"
         log_info "CERT_PASSWORD: ${CERT_PASSWORD:+<provided>}${CERT_PASSWORD:-<not provided>}"
@@ -607,9 +716,18 @@ main() {
             log_success "P12 certificate installation successful!"
         else
             log_warn "P12 certificate installation failed, will try CER+KEY method..."
+            
+            # Check if certificate was actually installed despite error
+            log_info "Checking if certificate was installed despite error..."
+            if check_existing_certificates; then
+                log_success "Certificate found in keychain after P12 installation!"
+                cert_installed=true
+            fi
         fi
     else
-        log_info "No P12 certificate URL provided, skipping P12 method"
+        if [ "$cert_installed" = false ]; then
+            log_info "No P12 certificate URL provided, skipping P12 method"
+        fi
     fi
 
     # Try CER+KEY certificate if P12 failed or not provided
@@ -624,6 +742,13 @@ main() {
             log_success "CER+KEY certificate installation successful!"
         else
             log_warn "CER+KEY certificate installation failed"
+            
+            # Check if certificate was actually installed despite error
+            log_info "Checking if certificate was installed despite error..."
+            if check_existing_certificates; then
+                log_success "Certificate found in keychain after CER+KEY installation!"
+                cert_installed=true
+            fi
         fi
     else
         if [ "$cert_installed" = false ]; then
