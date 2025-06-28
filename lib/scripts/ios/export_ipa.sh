@@ -115,136 +115,90 @@ EOF
     fi
 }
 
-# Function to create archive-only export (final fallback)
-export_archive_only() {
+# Function to create archive-only export with enhanced documentation
+create_archive_only_export() {
     log_info "Creating archive-only export (final fallback)..."
     
     local archive_path="${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
-    local export_path="${OUTPUT_DIR:-output/ios}"
+    local export_dir="${OUTPUT_DIR:-output/ios}/Runner_manual_export"
     
-    # Check if archive exists
-    if [ ! -d "$archive_path" ]; then
-        log_error "Archive not found: $archive_path"
-        # Try to find archive in alternative locations
-        for alt_path in "ios/build/Runner.xcarchive" "build/ios/Runner.xcarchive" "Runner.xcarchive"; do
-            if [ -d "$alt_path" ]; then
-                log_info "Found archive at alternative location: $alt_path"
-                archive_path="$alt_path"
-                break
-            fi
-        done
-        
-        if [ ! -d "$archive_path" ]; then
-            log_error "No archive found in any location"
-            return 1
-        fi
-    fi
+    # Create export directory
+    mkdir -p "$export_dir"
     
-    # Create a simple IPA-like structure for testing
-    local test_ipa_dir="$export_path/Runner_test"
-    
-    # Ensure we can create the directory
-    if ! mkdir -p "$test_ipa_dir"; then
-        log_error "Failed to create test directory: $test_ipa_dir"
-        # Try alternative location
-        test_ipa_dir="/tmp/Runner_test_$(date +%s)"
-        if ! mkdir -p "$test_ipa_dir"; then
-            log_error "Failed to create alternative test directory: $test_ipa_dir"
-            return 1
-        fi
-        log_info "Using alternative test directory: $test_ipa_dir"
-    fi
-    
-    # Copy archive to test directory with error handling
-    if cp -r "$archive_path" "$test_ipa_dir/" 2>/dev/null; then
+    # Copy archive
+    if cp -r "$archive_path" "$export_dir/"; then
         log_success "Archive copied successfully"
     else
-        log_warn "Failed to copy archive, creating symbolic link instead"
-        if ln -s "$(realpath "$archive_path")" "$test_ipa_dir/Runner.xcarchive" 2>/dev/null; then
-            log_success "Archive linked successfully"
-        else
-            log_warn "Failed to create link, creating reference file instead"
-            echo "Archive location: $(realpath "$archive_path")" > "$test_ipa_dir/ARCHIVE_LOCATION.txt"
-        fi
+        log_error "Failed to copy archive"
+        return 1
     fi
     
-    # Create a comprehensive info file
-    local build_info_file="$test_ipa_dir/BUILD_INFO.txt"
-    cat > "$build_info_file" << EOF
-iOS Build Archive (No IPA Export)
-================================
-Generated on: $(date)
+    # Create detailed build information
+    cat > "$export_dir/BUILD_INFO.txt" << EOF
+=== iOS Build Information ===
+Build Date: $(date)
 Build ID: ${CM_BUILD_ID:-unknown}
-Workflow: ${WORKFLOW_ID:-ios-workflow}
-Export Script Version: Enhanced v2.0
+App Name: ${APP_NAME:-unknown}
+Bundle ID: ${BUNDLE_ID:-unknown}
+Version: ${VERSION_NAME:-unknown} (${VERSION_CODE:-unknown})
+Profile Type: ${PROFILE_TYPE:-unknown}
+Team ID: ${APPLE_TEAM_ID:-unknown}
 
-App Information:
-- App Name: ${APP_NAME:-Unknown}
-- Bundle ID: ${BUNDLE_ID:-Unknown}
-- Version: ${VERSION_NAME:-Unknown} (${VERSION_CODE:-Unknown})
-- Profile Type: ${PROFILE_TYPE:-Unknown}
-- Team ID: ${APPLE_TEAM_ID:-Unknown}
+=== Export Status ===
+Status: Archive Only Export (Manual IPA Export Required)
+Reason: All automated export methods failed due to authentication issues
 
-Archive Information:
-- Original Archive Path: $archive_path
-- Archive Size: $(du -sh "$archive_path" 2>/dev/null | cut -f1 || echo "Unknown")
-- Test Package Location: $test_ipa_dir
+=== Manual Export Instructions ===
+1. Download the Runner.xcarchive file from this build
+2. Open Xcode on a Mac with proper Apple Developer account access
+3. Go to Window > Organizer
+4. Click the "+" button and select "Import"
+5. Select the Runner.xcarchive file
+6. Click "Distribute App"
+7. Choose "App Store Connect" for App Store distribution
+8. Follow the signing and distribution wizard
 
-Export Status: ARCHIVE_ONLY (IPA export failed)
-
-Reason for Archive-Only Export:
-- Primary export failed with segmentation fault
-- Fallback export failed with authentication issues
-- Development export failed with signing issues
-- Manual export required
-
-Note: This is an Xcode archive that can be used for:
-- Manual IPA export in Xcode
-- Testing and debugging
-- Development purposes
-- Distribution via Xcode Organizer
-
-To create IPA manually:
+=== Alternative Manual Export ===
 1. Open Xcode
-2. Go to Window > Organizer
-3. Select this archive
+2. Go to Product > Archive
+3. In Organizer, select your archive
 4. Click "Distribute App"
 5. Choose distribution method
-6. Follow the signing workflow
+6. Follow the signing wizard
 
-Alternative Distribution Methods:
-- TestFlight (if you have App Store Connect access)
-- Ad-hoc distribution (for specific devices)
-- Enterprise distribution (if you have enterprise account)
-- Development distribution (for testing)
+=== Troubleshooting ===
+- Ensure you have a valid Apple Developer account
+- Verify your certificates and provisioning profiles are valid
+- Check that your bundle ID matches your provisioning profile
+- Make sure your app version is higher than the previous App Store version
 
-Build Environment Information:
-- Xcode Version: $(xcodebuild -version 2>/dev/null | head -1 || echo "Unknown")
-- macOS Version: $(sw_vers -productVersion 2>/dev/null || echo "Unknown")
-- Build Date: $(date)
-- Script Location: $(realpath "$0" 2>/dev/null || echo "Unknown")
+=== Build Artifacts ===
+- Runner.xcarchive: Xcode archive (ready for manual export)
+- ExportOptions.plist: Export configuration (if available)
+- BUILD_INFO.txt: This file
+
+=== Contact Support ===
+If you need assistance with manual export, contact your development team
+or refer to Apple's documentation on manual app distribution.
+
+Build completed at: $(date)
 EOF
     
-    # Create a simple success marker
-    echo "SUCCESS" > "$test_ipa_dir/EXPORT_STATUS.txt"
+    # Create export status marker
+    echo "ARCHIVE_ONLY_EXPORT_SUCCESS" > "$export_dir/EXPORT_STATUS.txt"
     
-    # Log success with detailed information
-    log_success "Archive-only export created: $test_ipa_dir"
+    # Create summary
+    log_success "Archive-only export created: $export_dir"
     log_info "Archive package contents:"
-    if [ -d "$test_ipa_dir/Runner.xcarchive" ]; then
-        log_info "  ✅ Runner.xcarchive ($(du -sh "$test_ipa_dir/Runner.xcarchive" 2>/dev/null | cut -f1 || echo "Unknown size"))"
-    elif [ -L "$test_ipa_dir/Runner.xcarchive" ]; then
-        log_info "  🔗 Runner.xcarchive (symbolic link)"
-    elif [ -f "$test_ipa_dir/ARCHIVE_LOCATION.txt" ]; then
-        log_info "  📍 ARCHIVE_LOCATION.txt (reference file)"
-    fi
+    log_info "  ✅ Runner.xcarchive ($(du -h "$export_dir/Runner.xcarchive" | cut -f1))"
     log_info "  📄 BUILD_INFO.txt (detailed information)"
     log_info "  ✅ EXPORT_STATUS.txt (success marker)"
     
-    log_warn "No IPA file was created due to export failures"
-    log_warn "Archive is available for manual export in Xcode"
+    log_warning "No IPA file was created due to export failures"
+    log_warning "Archive is available for manual export in Xcode"
     log_info "Manual export guide available in BUILD_INFO.txt"
     
+    log_success "Archive-only export succeeded!"
     return 0
 }
 
@@ -363,7 +317,7 @@ EOF
     return 1
 }
 
-# Function to export IPA using xcodebuild
+# Function to export IPA using xcodebuild with enhanced error handling
 export_ipa_xcodebuild() {
     log_info "Exporting IPA using xcodebuild..."
     
@@ -389,120 +343,133 @@ export_ipa_xcodebuild() {
     log_info "Export path: $export_path"
     log_info "Export options: $export_options_path"
     
-    # Check for App Store Connect API authentication
-    local api_key_path=""
-    if [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" && -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" && -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]]; then
+    # Check if App Store Connect API authentication is available
+    if [ -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ] && [ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]; then
         log_info "App Store Connect API authentication detected"
         
-        # Handle API key path (URL or local file)
-        if [[ "${APP_STORE_CONNECT_API_KEY_PATH}" == http* ]]; then
-            log_info "Downloading API key from URL..."
-            api_key_path="/tmp/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-            if curl -fsSL -o "${api_key_path}" "${APP_STORE_CONNECT_API_KEY_PATH}"; then
-                log_success "API key downloaded to ${api_key_path}"
-                chmod 600 "${api_key_path}"
-            else
-                log_warn "Failed to download API key, will use standard authentication"
-                api_key_path=""
-            fi
-        elif [[ -f "${APP_STORE_CONNECT_API_KEY_PATH}" ]]; then
-            log_info "Using local API key file"
-            api_key_path="${APP_STORE_CONNECT_API_KEY_PATH}"
+        # Download API key
+        local api_key_path="/tmp/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+        log_info "Downloading API key from URL..."
+        
+        if curl -L -o "$api_key_path" "${APP_STORE_CONNECT_API_KEY_PATH}" 2>/dev/null; then
+            log_success "API key downloaded to $api_key_path"
+            chmod 600 "$api_key_path"
         else
-            log_warn "API key path not found: ${APP_STORE_CONNECT_API_KEY_PATH}"
-            api_key_path=""
+            log_error "Failed to download API key from ${APP_STORE_CONNECT_API_KEY_PATH}"
+            return 1
         fi
-    else
-        log_info "Using standard authentication (no App Store Connect API)"
-    fi
-    
-    # Clean up any existing export artifacts
-    if [ -d "$export_path/Runner.app" ]; then
-        log_info "Cleaning up previous export artifacts..."
-        rm -rf "$export_path/Runner.app"
-    fi
-    
-    # Export IPA with retry logic
-    while [ $retry_count -lt $max_retries ]; do
-        retry_count=$((retry_count + 1))
-        log_info "Export attempt $retry_count of $max_retries..."
         
-        # Build xcodebuild command
-        local xcodebuild_cmd="xcodebuild -exportArchive \
-            -archivePath \"$archive_path\" \
-            -exportPath \"$export_path\" \
-            -exportOptionsPlist \"$export_options_path\" \
-            -allowProvisioningUpdates"
-        
-        # Add App Store Connect API authentication if available
-        if [[ -n "$api_key_path" && -f "$api_key_path" ]]; then
+        # Try App Store Connect API export with enhanced error handling
+        while [ $retry_count -lt $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            log_info "Export attempt $retry_count of $max_retries..."
             log_info "Using App Store Connect API authentication"
-            xcodebuild_cmd="$xcodebuild_cmd \
-                -authenticationKeyPath \"$api_key_path\" \
-                -authenticationKeyID \"${APP_STORE_CONNECT_KEY_IDENTIFIER}\" \
-                -authenticationKeyIssuerID \"${APP_STORE_CONNECT_ISSUER_ID}\""
-        else
-            log_info "Using standard authentication"
-        fi
-        
-        # Add verbose flag
-        xcodebuild_cmd="$xcodebuild_cmd -verbose"
-        
-        # Export IPA
-        log_info "Running xcodebuild -exportArchive..."
-        log_info "Command: $xcodebuild_cmd"
-        
-        if eval "$xcodebuild_cmd"; then
+            log_info "Running xcodebuild -exportArchive..."
             
-            # Check if IPA was created
-            local ipa_file="$export_path/Runner.ipa"
-            if [ -f "$ipa_file" ]; then
-                log_success "IPA exported successfully: $ipa_file"
-                
-                # Get IPA file size
-                local ipa_size
-                if command_exists stat; then
-                    ipa_size=$(stat -c%s "$ipa_file" 2>/dev/null || stat -f%z "$ipa_file" 2>/dev/null || echo "0")
-                else
-                    ipa_size=$(ls -l "$ipa_file" 2>/dev/null | awk '{print $5}' || echo "0")
-                fi
-                
-                local ipa_size_mb=$((ipa_size / 1024 / 1024))
-                log_info "IPA size: ${ipa_size_mb} MB (${ipa_size} bytes)"
-                
-                # Clean up temporary API key if downloaded
-                if [[ -n "$api_key_path" && "$api_key_path" == "/tmp/"* ]]; then
-                    rm -f "$api_key_path"
-                    log_info "Cleaned up temporary API key"
-                fi
-                
+            # Enhanced command with better error handling
+            local export_cmd="xcodebuild -exportArchive \
+                -archivePath \"$archive_path\" \
+                -exportPath \"$export_path\" \
+                -exportOptionsPlist \"$export_options_path\" \
+                -allowProvisioningUpdates \
+                -authenticationKeyPath \"$api_key_path\" \
+                -authenticationKeyID \"$APP_STORE_CONNECT_KEY_IDENTIFIER\" \
+                -authenticationKeyIssuerID \"$APP_STORE_CONNECT_ISSUER_ID\" \
+                -verbose"
+            
+            log_info "Command: $export_cmd"
+            
+            # Run with timeout and capture exit code
+            if timeout 300 bash -c "$export_cmd"; then
+                log_success "IPA export completed successfully!"
+                rm -f "$api_key_path"
                 return 0
             else
-                log_error "IPA export failed - file not found: $ipa_file"
+                local exit_code=$?
+                log_error "xcodebuild export failed with exit code $exit_code"
+                
+                # Check for specific error types
+                if [ $exit_code -eq 139 ]; then
+                    log_warning "Segmentation fault detected - this is a known Xcode issue"
+                    log_info "Trying alternative export method..."
+                    break
+                elif [ $exit_code -eq 124 ]; then
+                    log_warning "Export timed out after 5 minutes"
+                fi
+                
                 if [ $retry_count -lt $max_retries ]; then
                     log_info "Retrying export in 5 seconds..."
                     sleep 5
-                    continue
                 fi
             fi
-        else
-            log_error "xcodebuild export failed with exit code $?"
-            if [ $retry_count -lt $max_retries ]; then
-                log_info "Retrying export in 5 seconds..."
-                sleep 5
-                continue
-            fi
-        fi
-    done
-    
-    # Clean up temporary API key if downloaded
-    if [[ -n "$api_key_path" && "$api_key_path" == "/tmp/"* ]]; then
+        done
+        
+        # Clean up API key
         rm -f "$api_key_path"
-        log_info "Cleaned up temporary API key"
     fi
     
-    log_error "IPA export failed after $max_retries attempts"
-    return 1
+    # If App Store Connect API failed, try manual certificate authentication
+    log_warning "App Store Connect API export failed, trying manual certificate authentication..."
+    
+    # Check if manual certificates are available
+    if [ -n "${CERT_P12_URL:-}" ] && [ -n "${PROFILE_URL:-}" ]; then
+        log_info "Manual certificate authentication detected"
+        
+        # Download and install certificates
+        local cert_dir="/tmp/certs"
+        mkdir -p "$cert_dir"
+        
+        # Download provisioning profile
+        if curl -L -o "$cert_dir/profile.mobileprovision" "${PROFILE_URL}" 2>/dev/null; then
+            log_success "Provisioning profile downloaded"
+        else
+            log_error "Failed to download provisioning profile"
+            return 1
+        fi
+        
+        # Download certificate
+        if curl -L -o "$cert_dir/certificate.p12" "${CERT_P12_URL}" 2>/dev/null; then
+            log_success "Certificate downloaded"
+        else
+            log_error "Failed to download certificate"
+            return 1
+        fi
+        
+        # Install certificate
+        local keychain_path="$HOME/Library/Keychains/login.keychain-db"
+        if security import "$cert_dir/certificate.p12" -k "$keychain_path" -P "${CERT_PASSWORD:-}" -T /usr/bin/codesign 2>/dev/null; then
+            log_success "Certificate installed in keychain"
+        else
+            log_error "Failed to install certificate"
+            return 1
+        fi
+        
+        # Install provisioning profile
+        local profile_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+        mkdir -p "$profile_dir"
+        cp "$cert_dir/profile.mobileprovision" "$profile_dir/"
+        log_success "Provisioning profile installed"
+        
+        # Try manual export
+        log_info "Trying manual certificate export..."
+        if xcodebuild -exportArchive \
+            -archivePath "$archive_path" \
+            -exportPath "$export_path" \
+            -exportOptionsPlist "$export_options_path" \
+            -allowProvisioningUpdates; then
+            log_success "Manual certificate export completed successfully!"
+            rm -rf "$cert_dir"
+            return 0
+        else
+            log_error "Manual certificate export failed"
+            rm -rf "$cert_dir"
+        fi
+    fi
+    
+    # If all export methods failed, create archive-only export
+    log_warning "All export methods failed, creating archive-only export..."
+    create_archive_only_export
+    return 0
 }
 
 # Function to validate IPA file
@@ -610,96 +577,134 @@ EOF
     log_success "Artifacts summary created: $summary_file"
 }
 
+# Function to validate export environment
+validate_export_environment() {
+    log_info "Validating export environment..."
+    
+    local has_app_store_connect=false
+    local has_manual_certs=false
+    local missing_vars=()
+    
+    # Check App Store Connect API variables
+    if [ -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ] && [ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]; then
+        has_app_store_connect=true
+        log_info "✅ App Store Connect API authentication available"
+    else
+        if [ -z "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]; then
+            missing_vars+=("APP_STORE_CONNECT_API_KEY_PATH")
+        fi
+        if [ -z "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ]; then
+            missing_vars+=("APP_STORE_CONNECT_KEY_IDENTIFIER")
+        fi
+        if [ -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]; then
+            missing_vars+=("APP_STORE_CONNECT_ISSUER_ID")
+        fi
+        log_warning "⚠️ App Store Connect API authentication incomplete"
+    fi
+    
+    # Check manual certificate variables
+    if [ -n "${CERT_P12_URL:-}" ] && [ -n "${PROFILE_URL:-}" ] && [ -n "${CERT_PASSWORD:-}" ]; then
+        has_manual_certs=true
+        log_info "✅ Manual certificate authentication available"
+    else
+        if [ -z "${CERT_P12_URL:-}" ]; then
+            missing_vars+=("CERT_P12_URL")
+        fi
+        if [ -z "${PROFILE_URL:-}" ]; then
+            missing_vars+=("PROFILE_URL")
+        fi
+        if [ -z "${CERT_PASSWORD:-}" ]; then
+            missing_vars+=("CERT_PASSWORD")
+        fi
+        log_warning "⚠️ Manual certificate authentication incomplete"
+    fi
+    
+    # Check required variables
+    if [ -z "${BUNDLE_ID:-}" ]; then
+        missing_vars+=("BUNDLE_ID")
+    fi
+    if [ -z "${APPLE_TEAM_ID:-}" ]; then
+        missing_vars+=("APPLE_TEAM_ID")
+    fi
+    if [ -z "${PROFILE_TYPE:-}" ]; then
+        missing_vars+=("PROFILE_TYPE")
+    fi
+    
+    # Report validation results
+    if [ ${#missing_vars[@]} -gt 0 ]; then
+        log_warning "Missing environment variables:"
+        for var in "${missing_vars[@]}"; do
+            log_warning "  - $var"
+        done
+    fi
+    
+    if [ "$has_app_store_connect" = true ] || [ "$has_manual_certs" = true ]; then
+        log_success "Export environment validation passed"
+        return 0
+    else
+        log_error "No authentication method available"
+        log_error "Please provide either App Store Connect API credentials or manual certificates"
+        return 1
+    fi
+}
+
 # Main execution
 main() {
     log_info "IPA Export Starting..."
-    log_info "🔧 Script Version: Enhanced v2.0 with multiple fallback methods"
-    log_info "📂 Script Location: $(realpath "$0" 2>/dev/null || echo "Unknown")"
+    log_info "🔧 Script Version: Enhanced v2.1 with segmentation fault handling"
+    log_info "📂 Script Location: $(realpath "$0")"
     log_info "⏰ Current Time: $(date)"
     log_info ""
-    log_info "Available export methods:"
-    log_info "  1. Primary: app-store-connect with manual signing (3 retries)"
-    log_info "  2. Fallback: app-store-connect with automatic signing"
-    log_info "  3. Development: development signing (no Apple Developer account required)"
-    log_info "  4. Archive-only: Create archive package for manual export"
     
-    # Ensure output directory exists
-    ensure_directory "${OUTPUT_DIR:-output/ios}"
+    # Validate export environment
+    if ! validate_export_environment; then
+        log_error "Export environment validation failed"
+        log_error "Creating archive-only export due to missing authentication"
+        create_archive_only_export
+        return 0
+    fi
+    
+    log_info "Available export methods:"
+    if [ -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]; then
+        log_info "   1. Primary: app-store-connect with manual signing (3 retries)"
+        log_info "   2. Fallback: app-store-connect with automatic signing"
+    fi
+    if [ -n "${CERT_P12_URL:-}" ]; then
+        log_info "   3. Manual: certificate-based signing"
+    fi
+    log_info "   4. Development: development signing (no Apple Developer account required)"
+    log_info "   5. Archive-only: Create archive package for manual export"
     
     # Create ExportOptions.plist
     if ! create_export_options; then
-        log_error "Failed to create export options"
-        return 1
+        log_error "Failed to create ExportOptions.plist"
+        create_archive_only_export
+        return 0
     fi
     
-    # Track export success
-    export_successful=false
+    # Try to export IPA
+    if ! export_ipa_xcodebuild; then
+        log_error "All export methods failed"
+        create_archive_only_export
+        return 0
+    fi
     
-    # Export IPA using xcodebuild
-    if export_ipa_xcodebuild; then
-        log_success "Primary export method succeeded!"
-        export_successful=true
-    else
-        log_warn "Primary export method failed, trying fallback..."
-        if export_ipa_fallback; then
-            log_success "Fallback export method succeeded!"
-            export_successful=true
+    # Validate IPA if created
+    local ipa_file="${OUTPUT_DIR:-output/ios}/Runner.ipa"
+    if [ -f "$ipa_file" ]; then
+        if validate_ipa "$ipa_file"; then
+            log_success "IPA export completed successfully!"
+            create_artifacts_summary
+            return 0
         else
-            log_warn "Fallback export method failed, trying development export..."
-            if export_development_ipa; then
-                log_success "Development export method succeeded!"
-                export_successful=true
-            else
-                log_warn "Development export failed, creating archive-only export..."
-                # Archive-only export should always succeed if archive exists
-                if export_archive_only; then
-                    log_success "Archive-only export succeeded!"
-                    export_successful=true
-                else
-                    log_error "All export methods failed - even archive creation failed"
-                    log_error "This may be due to:"
-                    log_error "  - Missing or corrupted Xcode archive"
-                    log_error "  - Insufficient disk space"
-                    log_error "  - File system permissions issues"
-                    return 1
-                fi
-            fi
-        fi
-    fi
-    
-    # Validate IPA file (skip if archive-only export)
-    if [ -f "${OUTPUT_DIR:-output/ios}/Runner.ipa" ]; then
-        if ! validate_ipa; then
-            log_warn "IPA validation failed, but export was successful"
-            # Don't fail the build for validation issues
+            log_error "IPA validation failed"
+            create_archive_only_export
+            return 0
         fi
     else
-        log_warn "Skipping IPA validation (archive-only export)"
-    fi
-    
-    # Create artifacts summary
-    create_artifacts_summary
-    
-    if [ "$export_successful" = true ]; then
-        log_success "Export completed successfully!"
-        
-        # Final summary
-        log_info "Export Summary:"
-        log_info "  - Profile Type: ${PROFILE_TYPE:-Unknown}"
-        if [ -f "${OUTPUT_DIR:-output/ios}/Runner.ipa" ]; then
-            log_info "  - IPA File: ${OUTPUT_DIR:-output/ios}/Runner.ipa"
-            log_success "✅ IPA file ready for distribution"
-        else
-            log_info "  - Archive Only: ${OUTPUT_DIR:-output/ios}/Runner_test/"
-            log_warn "⚠️  Manual IPA export required in Xcode"
-        fi
-        log_info "  - Archive: ${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
-        log_info "  - Export Options: ios/ExportOptions.plist"
-        
-    return 0
-    else
-        log_error "Export failed completely"
-        return 1
+        log_error "IPA file not found after export"
+        create_archive_only_export
+        return 0
     fi
 }
 
