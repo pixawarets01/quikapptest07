@@ -347,6 +347,13 @@ export_ipa_xcodebuild() {
     if [ -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ] && [ -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]; then
         log_info "App Store Connect API authentication detected"
         
+        # Check if we should skip App Store Connect API due to known segmentation fault issues
+        if [ "${SKIP_APP_STORE_CONNECT_API:-false}" = "true" ]; then
+            log_warn "Skipping App Store Connect API due to SKIP_APP_STORE_CONNECT_API=true"
+            log_info "Proceeding directly to automatic signing..."
+            return 1
+        fi
+        
         # Download API key
         local api_key_path="/tmp/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
         log_info "Downloading API key from URL..."
@@ -408,8 +415,50 @@ export_ipa_xcodebuild() {
         rm -f "$api_key_path"
     fi
     
-    # If App Store Connect API failed, try manual certificate authentication
-    log_warn "App Store Connect API export failed, trying manual certificate authentication..."
+    # If App Store Connect API failed, try simple automatic signing first
+    log_warn "App Store Connect API export failed, trying simple automatic signing..."
+    
+    # Create simple export options for automatic signing
+    local simple_export_options="ios/SimpleExportOptions.plist"
+    cat > "$simple_export_options" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string>
+    <key>teamID</key>
+    <string>${APPLE_TEAM_ID:-}</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+</dict>
+</plist>
+EOF
+    
+    log_info "Trying simple export with automatic signing..."
+    if xcodebuild -exportArchive \
+        -archivePath "$archive_path" \
+        -exportPath "$export_path" \
+        -exportOptionsPlist "$simple_export_options" \
+        -allowProvisioningUpdates; then
+        log_success "Simple export with automatic signing completed successfully!"
+        return 0
+    else
+        log_error "Simple export failed, trying manual certificate authentication..."
+    fi
+    
+    # If simple export failed, try manual certificate authentication
+    log_warn "All authentication methods failed, trying manual certificate authentication..."
     
     # Check if manual certificates are available
     if [ -n "${CERT_P12_URL:-}" ] && [ -n "${PROFILE_URL:-}" ]; then
@@ -437,10 +486,11 @@ export_ipa_xcodebuild() {
         
         # Install certificate with multiple fallback methods
         local keychain_paths=(
+            "/Users/builder/Library/Keychains/ios-build.keychain-db"
+            "/Users/builder/Library/Keychains/ios-build.keychain"
             "$HOME/Library/Keychains/login.keychain-db"
             "$HOME/Library/Keychains/login.keychain"
-            "/Users/builder/Library/Keychains/login.keychain-db"
-            "/Users/builder/Library/Keychains/login.keychain"
+            "/Library/Keychains/System.keychain"
         )
         
         local cert_installed=false
@@ -486,30 +536,18 @@ export_ipa_xcodebuild() {
         fi
     fi
     
-    # If all export methods failed, try simple export with automatic signing
-    log_warn "All authentication methods failed, trying simple export with automatic signing..."
+    # If all export methods failed, try development export
+    log_warn "All export methods failed, trying development export..."
     
-    # Try direct export without authentication (for development/testing)
-    log_info "Trying direct export without authentication..."
-    if xcodebuild -exportArchive \
-        -archivePath "$archive_path" \
-        -exportPath "$export_path" \
-        -exportOptionsPlist "$export_options_path"; then
-        log_success "Direct export completed successfully!"
-        return 0
-    else
-        log_error "Direct export failed"
-    fi
-    
-    # Create simple export options for automatic signing
-    local simple_export_options="ios/SimpleExportOptions.plist"
-    cat > "$simple_export_options" << EOF
+    # Create development export options
+    local dev_export_options="ios/DevExportOptions.plist"
+    cat > "$dev_export_options" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store</string>
+    <string>development</string>
     <key>teamID</key>
     <string>${APPLE_TEAM_ID:-}</string>
     <key>signingStyle</key>
@@ -517,7 +555,7 @@ export_ipa_xcodebuild() {
     <key>uploadBitcode</key>
     <false/>
     <key>uploadSymbols</key>
-    <true/>
+    <false/>
     <key>compileBitcode</key>
     <false/>
     <key>stripSwiftSymbols</key>
@@ -528,16 +566,16 @@ export_ipa_xcodebuild() {
 </plist>
 EOF
     
-    log_info "Trying simple export with automatic signing..."
+    log_info "Trying development export..."
     if xcodebuild -exportArchive \
         -archivePath "$archive_path" \
         -exportPath "$export_path" \
-        -exportOptionsPlist "$simple_export_options" \
+        -exportOptionsPlist "$dev_export_options" \
         -allowProvisioningUpdates; then
-        log_success "Simple export with automatic signing completed successfully!"
+        log_success "Development export completed successfully!"
         return 0
     else
-        log_error "Simple export also failed"
+        log_error "Development export also failed"
     fi
     
     # If all export methods failed, create archive-only export
