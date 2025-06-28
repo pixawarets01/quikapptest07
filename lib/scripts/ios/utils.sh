@@ -3,26 +3,26 @@
 # 🔧 Common Utility Functions for iOS Build Scripts
 # This file provides shared functions used across all iOS build scripts
 
-# Logging functions with timestamps and emojis
+# Logging functions with timestamps
 log_info() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ℹ️ $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $1"
 }
 
 log_success() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] SUCCESS: $1"
 }
 
 log_warn() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️ $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1"
 }
 
 log_error() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ❌ $1" >&2
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1" >&2
 }
 
 log_debug() {
     if [ "${DEBUG:-false}" = "true" ]; then
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] 🔍 $1"
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] DEBUG: $1"
     fi
 }
 
@@ -95,7 +95,7 @@ send_email() {
     local error_message="${4:-No error message provided}"
     
     if [ "${ENABLE_EMAIL_NOTIFICATIONS:-false}" = "true" ] && [ -f "lib/scripts/utils/send_email.py" ]; then
-        log_info "📧 Sending $email_type email for $platform build $build_id"
+        log_info "Sending $email_type email for $platform build $build_id"
         if python3 lib/scripts/utils/send_email.py "$email_type" "$platform" "$build_id" "$error_message"; then
             log_success "Email sent successfully"
         else
@@ -120,7 +120,7 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Function to check file size and existence
+# Function to check file size and existence (Linux compatible)
 validate_file() {
     local file_path="$1"
     local min_size="${2:-1}"
@@ -130,7 +130,16 @@ validate_file() {
         return 1
     fi
     
-    local file_size=$(stat -f%z "$file_path" 2>/dev/null || stat -c%s "$file_path" 2>/dev/null || echo "0")
+    # Use Linux-compatible stat command
+    local file_size
+    if command_exists stat; then
+        # Try Linux stat first, then BSD stat
+        file_size=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path" 2>/dev/null || echo "0")
+    else
+        # Fallback using ls
+        file_size=$(ls -l "$file_path" 2>/dev/null | awk '{print $5}' || echo "0")
+    fi
+    
     if [ "$file_size" -lt "$min_size" ]; then
         log_error "File too small (${file_size} bytes): $file_path"
         return 1
@@ -166,6 +175,21 @@ download_file() {
     return 1
 }
 
+# Function to get system memory (Linux compatible)
+get_system_memory() {
+    if [ -f "/proc/meminfo" ]; then
+        # Linux system
+        local mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        local mem_gb=$((mem_kb / 1024 / 1024))
+        echo "${mem_gb} GB"
+    elif command_exists sysctl; then
+        # macOS system (for local development)
+        sysctl -n hw.memsize 2>/dev/null | awk '{print $0/1024/1024/1024 " GB"}' || echo "Unknown"
+    else
+        echo "Unknown"
+    fi
+}
+
 # Function to cleanup on exit
 cleanup_on_exit() {
     local exit_code=$?
@@ -181,4 +205,4 @@ trap cleanup_on_exit EXIT
 # Export functions for use in other scripts
 export -f log_info log_success log_warn log_error log_debug
 export -f validate_required_vars validate_profile_type send_email
-export -f ensure_directory command_exists validate_file download_file 
+export -f ensure_directory command_exists validate_file download_file get_system_memory 

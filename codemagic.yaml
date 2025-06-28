@@ -51,8 +51,8 @@ scripts:
         echo "APP_NAME: $APP_NAME"
         echo "ORG_NAME: $ORG_NAME"
         echo "WEB_URL: $WEB_URL"
-        echo "VERSION_NAME: $VERSION_NAME"
-        echo "VERSION_CODE: $VERSION_CODE"
+        echo "VERSION_NAME: $VERSION_NAME"      
+        echo "VERSION_CODE: $VERSION_CODE" 
         echo "PKG_NAME: $PKG_NAME"
         echo "BUNDLE_ID: $BUNDLE_ID"
 
@@ -97,7 +97,7 @@ scripts:
         
         echo "*********** Bottom Navigation Configuration ***********"
         echo "BOTTOMMENU_ITEMS: $BOTTOMMENU_ITEMS"
-        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"
+        echo "BOTTOMMENU_BG_COLOR: $BOTTOMMENU_BG_COLOR"  
         echo "BOTTOMMENU_ICON_COLOR: $BOTTOMMENU_ICON_COLOR"
         echo "BOTTOMMENU_TEXT_COLOR: $BOTTOMMENU_TEXT_COLOR"
         echo "BOTTOMMENU_FONT: $BOTTOMMENU_FONT"
@@ -2254,7 +2254,27 @@ workflows:
           echo "✅ Fastlane setup completed"
       - name: Build iOS app
         script: |
+          # Make all iOS scripts executable and fix any BOM issues
+          chmod +x lib/scripts/ios/*.sh
+          chmod +x lib/scripts/utils/*.sh
+          
+          # Remove BOM characters if present (fix encoding issues)
+          for script in lib/scripts/ios/*.sh; do
+            if [ -f "$script" ]; then
+              # Remove BOM and fix line endings
+              sed -i '1s/^\xEF\xBB\xBF//' "$script" 2>/dev/null || true
+              sed -i '1s/^\uFEFF//' "$script" 2>/dev/null || true
+              dos2unix "$script" 2>/dev/null || true
+            fi
+          done
+          
+          # Verify main script is executable and readable
+          if [ ! -x "lib/scripts/ios/main.sh" ]; then
+            echo "❌ main.sh is not executable, fixing permissions..."
           chmod +x lib/scripts/ios/main.sh
+          fi
+          
+          # Run the main iOS build script
           ./lib/scripts/ios/main.sh
 
       - name: Optional Fastlane Export (if available)
@@ -3180,117 +3200,117 @@ workflows:
           trap 'echo "❌ Error on line $LINENO"' ERR
 
           # ✅ Required environment variables
-          REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD CM_BUILD_DIR CM_ENV)
-          echo "🔍 Validating environment variables..."
-          for VAR in "${REQUIRED_VARS[@]}"; do
+            REQUIRED_VARS=(CERT_CER_URL CERT_KEY_URL CERT_PASSWORD PROFILE_URL KEYCHAIN_PASSWORD CM_BUILD_DIR CM_ENV)
+            echo "🔍 Validating environment variables..."
+            for VAR in "${REQUIRED_VARS[@]}"; do
             [[ -z "${!VAR:-}" ]] && { echo "❌ Missing $VAR"; exit 1; }
             echo "✅ $VAR is set"
-          done
+              done
 
-          # 🔧 Paths
-          KEYCHAIN_NAME="ios-build.keychain"
-          BUILD_DIR="$CM_BUILD_DIR"
-          CERT_CER_PATH="$BUILD_DIR/certificate.cer"
-          PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
-          P12_PATH="$BUILD_DIR/generated_certificate.p12"
-          PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
+              # 🔧 Paths
+              KEYCHAIN_NAME="ios-build.keychain"
+              BUILD_DIR="$CM_BUILD_DIR"
+              CERT_CER_PATH="$BUILD_DIR/certificate.cer"
+              PRIVATE_KEY_PATH="$BUILD_DIR/private.key"
+              P12_PATH="$BUILD_DIR/generated_certificate.p12"
+              PROFILE_PATH="$BUILD_DIR/profile.mobileprovision"
 
-          mkdir -p "$BUILD_DIR"
+              mkdir -p "$BUILD_DIR"
 
-          echo "📥 Downloading cert, key, and mobileprovision..."
-          curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
-          curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
-          curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
+              echo "📥 Downloading cert, key, and mobileprovision..."
+              curl -fsSL -o "$CERT_CER_PATH" "$CERT_CER_URL"
+              curl -fsSL -o "$PRIVATE_KEY_PATH" "$CERT_KEY_URL"
+              curl -fsSL -o "$PROFILE_PATH" "$PROFILE_URL"
 
-          echo "🔐 Generating .p12 from cert + key..."
-          openssl pkcs12 -export \
-            -inkey "$PRIVATE_KEY_PATH" \
-            -in "$CERT_CER_PATH" \
-            -out "$P12_PATH" \
-            -name "Apple Distribution" \
-            -certfile "$CERT_CER_PATH" \
-            -passout pass:"$CERT_PASSWORD" \
-            -legacy
+              echo "🔐 Generating .p12 from cert + key..."
+              openssl pkcs12 -export \
+              -inkey "$PRIVATE_KEY_PATH" \
+              -in "$CERT_CER_PATH" \
+              -out "$P12_PATH" \
+              -name "Apple Distribution" \
+              -certfile "$CERT_CER_PATH" \
+              -passout pass:"$CERT_PASSWORD" \
+              -legacy
 
-          echo "🔐 Setting up keychain..."
-          security delete-keychain "$KEYCHAIN_NAME" || true
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+              echo "🔐 Setting up keychain..."
+              security delete-keychain "$KEYCHAIN_NAME" || true
+              security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+              security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
+              security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
 
-          echo "🔑 Importing .p12..."
-          security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          security list-keychains -s "$KEYCHAIN_NAME"
-          security default-keychain -s "$KEYCHAIN_NAME"
+              echo "🔑 Importing .p12..."
+              security import "$P12_PATH" -k "$KEYCHAIN_NAME" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+            security list-keychains -s "$KEYCHAIN_NAME"
+              security default-keychain -s "$KEYCHAIN_NAME"
 
-          echo "📲 Installing provisioning profile..."
-          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-          PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+              echo "📲 Installing provisioning profile..."
+              PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+              PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name xml1 -o - - | plutil -p - | sed -E 's/.*"([^"]+)".*/\1/')
+              mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+              cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
 
-          echo "📛 Extracting CODE_SIGN_IDENTITY from .p12..."
-          EXTRACTED_IDENTITY=$(openssl pkcs12 -in "$P12_PATH" -nokeys -legacy -passin pass:"$CERT_PASSWORD" \
-            | openssl x509 -noout -subject | sed -n 's/^subject=.*CN=\(.*\)/\1/p')
+              echo "📛 Extracting CODE_SIGN_IDENTITY from .p12..."
+              EXTRACTED_IDENTITY=$(openssl pkcs12 -in "$P12_PATH" -nokeys -legacy -passin pass:"$CERT_PASSWORD" \
+              | openssl x509 -noout -subject | sed -n 's/^subject=.*CN=\(.*\)/\1/p')
 
-          if [[ -z "$EXTRACTED_IDENTITY" ]]; then
-            echo "❌ Failed to extract CODE_SIGN_IDENTITY from .p12"
-            exit 1
-          fi
-          CODE_SIGN_IDENTITY="$EXTRACTED_IDENTITY"
+            if [[ -z "$EXTRACTED_IDENTITY" ]]; then
+              echo "❌ Failed to extract CODE_SIGN_IDENTITY from .p12"
+              exit 1
+              fi
+              CODE_SIGN_IDENTITY="$EXTRACTED_IDENTITY"
 
-          echo "✅ PROFILE_UUID=$PROFILE_UUID"
-          echo "✅ PROFILE_NAME=$PROFILE_NAME"
-          echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
+              echo "✅ PROFILE_UUID=$PROFILE_UUID"
+              echo "✅ PROFILE_NAME=$PROFILE_NAME"
+              echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
 
-          # Export to .env for use in xcodebuild
-          echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
-          echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
+              # Export to .env for use in xcodebuild
+              echo "PROFILE_UUID=$PROFILE_UUID" >> "$CM_ENV"
+              echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
           echo "CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY" >> "$CM_ENV"
 
-          # ✅ CERTIFICATE MATCH VALIDATION
-          echo "🔍 Validating that provisioning profile matches signing cert..."
+            # ✅ CERTIFICATE MATCH VALIDATION
+            echo "🔍 Validating that provisioning profile matches signing cert..."
 
-          PROFILE_PLIST="$BUILD_DIR/profile.plist"
-          CERT_DER_PATH="$BUILD_DIR/dev_cert.der"
+            PROFILE_PLIST="$BUILD_DIR/profile.plist"
+            CERT_DER_PATH="$BUILD_DIR/dev_cert.der"
 
-          # Decode .mobileprovision into plist
-          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+            # Decode .mobileprovision into plist
+            security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
 
-          # Extract base64 and decode into DER file using awk (safe for multiline)
-          CERT_BASE64=$(plutil -extract DeveloperCertificates.0 xml1 -o - "$PROFILE_PLIST" \
+            # Extract base64 and decode into DER file using awk (safe for multiline)
+            CERT_BASE64=$(plutil -extract DeveloperCertificates.0 xml1 -o - "$PROFILE_PLIST" \
             | awk '/<data>/,/<\/data>/' \
             | sed -e 's/<[^>]*>//g' -e 's/^[ \t]*//' \
             | tr -d '\n')
 
-          if [[ -z "$CERT_BASE64" ]]; then
+            if [[ -z "$CERT_BASE64" ]]; then
             echo "❌ Failed to extract base64 certificate data"
             exit 1
-          fi
+            fi
 
-          echo "$CERT_BASE64" | base64 -d > "$CERT_DER_PATH"
+            echo "$CERT_BASE64" | base64 -d > "$CERT_DER_PATH"
 
-          # Validate extracted certificate
-          if ! openssl x509 -inform der -in "$CERT_DER_PATH" -noout > /dev/null 2>&1; then
+            # Validate extracted certificate
+            if ! openssl x509 -inform der -in "$CERT_DER_PATH" -noout > /dev/null 2>&1; then
             echo "❌ Extracted certificate is invalid or unreadable"
             exit 1
-          fi
+            fi
 
-          echo "✅ Provisioning profile contains a valid Developer Certificate."
+            echo "✅ Provisioning profile contains a valid Developer Certificate."
 
-          DER_HASH=$(openssl x509 -in "$CERT_DER_PATH" -inform der -noout -sha1 -fingerprint)
-          CER_HASH=$(openssl x509 -in "$CERT_CER_PATH" -noout -sha1 -fingerprint)
+            DER_HASH=$(openssl x509 -in "$CERT_DER_PATH" -inform der -noout -sha1 -fingerprint)
+            CER_HASH=$(openssl x509 -in "$CERT_CER_PATH" -noout -sha1 -fingerprint)
 
-          if [[ "$DER_HASH" != "$CER_HASH" ]]; then
+            if [[ "$DER_HASH" != "$CER_HASH" ]]; then
             echo "❌ Certificate in profile does NOT match imported .cer"
             echo "DER: $DER_HASH"
             echo "CER: $CER_HASH"
             exit 1
-          else
+            else
             echo "✅ Certificate matches the .cer used to generate the .p12"
-          fi
-          echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
+            fi
+            echo "🎉 iOS code signing setup completed using .cer + .key (no Mac needed!)"
 
       - *debug_env
       - *change_proj_name
@@ -3471,8 +3491,8 @@ workflows:
           set -a
           source "$CM_ENV"
           set +a
-          echo "✅ PROFILE_UUID=$PROFILE_UUID"
-          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+                echo "✅ PROFILE_UUID=$PROFILE_UUID"
+                echo "✅ PROFILE_NAME=$PROFILE_NAME"
           echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
           
           cat > ios/Podfile <<EOF
@@ -3528,7 +3548,7 @@ workflows:
               end
             end
           end
-          EOF
+            EOF
 
       - name: Flutter IPA Build
         script: |
@@ -3611,8 +3631,8 @@ workflows:
           set -a
           source "$CM_ENV"
           set +a
-          echo "✅ PROFILE_UUID=$PROFILE_UUID"
-          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+                echo "✅ PROFILE_UUID=$PROFILE_UUID"
+                echo "✅ PROFILE_NAME=$PROFILE_NAME"
           echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
           echo "✅ CERT_NAME=$CERT_NAME"
 
@@ -3623,16 +3643,16 @@ workflows:
           SIGNING_CERT="${CERT_NAME:-Apple Distribution}"
           echo "🔍 Using signing certificate for archive: $SIGNING_CERT"
 
-          xcodebuild -workspace "$XCODE_WORKSPACE" \
-            -scheme "$XCODE_SCHEME" \
-            -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
-            -sdk iphoneos \
-            -configuration Release \
-            archive \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+              xcodebuild -workspace "$XCODE_WORKSPACE" \
+                  -scheme "$XCODE_SCHEME" \
+                  -archivePath "$CM_BUILD_DIR/Runner.xcarchive" \
+                  -sdk iphoneos \
+                  -configuration Release \
+                  archive \
+                  DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+                  PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             CODE_SIGN_IDENTITY="$SIGNING_CERT" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
+                  PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID"
 
       - name: 📦 Export signed IPA
         script: |
@@ -3652,15 +3672,15 @@ workflows:
           echo "Contents of output directory:"
           ls -lh "$CM_BUILD_DIR/ios_output" || echo "Directory not found"
 
-          if [[ -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
-            echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
+            if [[ -f "$CM_BUILD_DIR/ios_output/Runner.ipa" ]]; then
+          echo "✅ IPA generated at: $CM_BUILD_DIR/ios_output/Runner.ipa"
             echo "📊 IPA file size: $(du -h "$CM_BUILD_DIR/ios_output/Runner.ipa" | cut -f1)"
-          else
+            else
             echo "❌ IPA file was not generated!"
             echo "🔍 Checking for any generated files:"
             find "$CM_BUILD_DIR/ios_output" -type f 2>/dev/null || echo "No files found"
             exit 1
-          fi
+            fi
 
       - name: Upload to TestFlight
         script: |
@@ -3668,8 +3688,8 @@ workflows:
           set -a
           source "$CM_ENV"
           set +a
-          echo "✅ PROFILE_UUID=$PROFILE_UUID"
-          echo "✅ PROFILE_NAME=$PROFILE_NAME"
+               echo "✅ PROFILE_UUID=$PROFILE_UUID"
+               echo "✅ PROFILE_NAME=$PROFILE_NAME"
           echo "✅ CODE_SIGN_IDENTITY=$CODE_SIGN_IDENTITY"
           
           xcrun altool --upload-app \

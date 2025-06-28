@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 🔧 Environment Setup Script for iOS Build
+# Environment Setup Script for iOS Build
 # Purpose: Environment validation, cleanup, and optimization
 
 set -euo pipefail
@@ -9,16 +9,16 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "$0")"
 source "${SCRIPT_DIR}/utils.sh"
 
-log_info "🚀 Starting iOS Environment Setup..."
+log_info "Starting iOS Environment Setup..."
 
 # Function to display environment information
 show_environment_info() {
-    log_info "📊 Build Environment Information:"
+    log_info "Build Environment Information:"
     log_info "  - Flutter: $(flutter --version | head -1 2>/dev/null || echo 'Not available')"
     log_info "  - Xcode: $(xcodebuild -version | head -1 2>/dev/null || echo 'Not available')"
     log_info "  - CocoaPods: $(pod --version 2>/dev/null || echo 'Not available')"
     log_info "  - Ruby: $(ruby --version 2>/dev/null || echo 'Not available')"
-    log_info "  - Memory: $(sysctl -n hw.memsize 2>/dev/null | awk '{print $0/1024/1024/1024 " GB"}' || echo 'Unknown')"
+    log_info "  - Memory: $(get_system_memory)"
     log_info "  - Profile Type: ${PROFILE_TYPE:-not_set}"
     log_info "  - Workflow ID: ${WORKFLOW_ID:-not_set}"
     log_info "  - Bundle ID: ${BUNDLE_ID:-not_set}"
@@ -27,7 +27,7 @@ show_environment_info() {
 
 # Function to validate required tools
 validate_tools() {
-    log_info "🔍 Validating required tools..."
+    log_info "Validating required tools..."
     
     local missing_tools=()
     
@@ -69,7 +69,7 @@ validate_tools() {
 
 # Function to clean previous build artifacts
 cleanup_build_artifacts() {
-    log_info "🧹 Cleaning previous build artifacts..."
+    log_info "Cleaning previous build artifacts..."
     
     # Flutter cleanup
     if [ -d ".dart_tool" ]; then
@@ -118,10 +118,10 @@ cleanup_build_artifacts() {
 
 # Function to validate Firebase configuration
 validate_firebase_config() {
-    log_info "🔥 Validating Firebase configuration..."
+    log_info "Validating Firebase configuration..."
     
     if [ "${PUSH_NOTIFY:-false}" = "true" ]; then
-        log_info "🔔 Push notifications ENABLED - Firebase validation required"
+        log_info "Push notifications ENABLED - Firebase validation required"
         
         if [ -z "${FIREBASE_CONFIG_IOS:-}" ]; then
             log_error "FIREBASE_CONFIG_IOS is required when PUSH_NOTIFY=true"
@@ -135,7 +135,7 @@ validate_firebase_config() {
         
         log_success "Firebase configuration is valid"
     else
-        log_info "🔕 Push notifications DISABLED - Skipping Firebase validation"
+        log_info "Push notifications DISABLED - Skipping Firebase validation"
         if [ -n "${FIREBASE_CONFIG_IOS:-}" ]; then
             log_warn "Firebase configuration provided but PUSH_NOTIFY is false"
             log_warn "Firebase will be disabled during build"
@@ -147,7 +147,7 @@ validate_firebase_config() {
 
 # Function to validate iOS signing configuration
 validate_ios_signing() {
-    log_info "🔐 Validating iOS signing configuration..."
+    log_info "Validating iOS signing configuration..."
     
     if [[ "${WORKFLOW_ID:-}" == "auto-ios-workflow" ]]; then
         log_info "Auto-ios-workflow detected - skipping manual signing validation"
@@ -187,7 +187,7 @@ validate_ios_signing() {
 
 # Function to create required directories
 setup_directories() {
-    log_info "📁 Setting up required directories..."
+    log_info "Setting up required directories..."
     
     ensure_directory "${OUTPUT_DIR:-output/ios}"
     ensure_directory "ios/certificates"
@@ -198,7 +198,7 @@ setup_directories() {
 
 # Function to set build environment variables
 set_build_environment() {
-    log_info "🔧 Setting build environment variables..."
+    log_info "Setting build environment variables..."
     
     # Set default values
     export OUTPUT_DIR="${OUTPUT_DIR:-output/ios}"
@@ -213,7 +213,7 @@ set_build_environment() {
     export XCODE_OPTIMIZATION="${XCODE_OPTIMIZATION:-true}"
     export XCODE_PARALLEL_BUILD="${XCODE_PARALLEL_BUILD:-true}"
     
-    log_info "📋 Build Environment Variables:"
+    log_info "Build Environment Variables:"
     log_info "   OUTPUT_DIR: ${OUTPUT_DIR}"
     log_info "   PROJECT_ROOT: ${PROJECT_ROOT}"
     log_info "   CM_BUILD_DIR: ${CM_BUILD_DIR}"
@@ -225,7 +225,7 @@ set_build_environment() {
 
 # Function to check required build scripts
 check_build_scripts() {
-    log_info "📋 Checking for required build scripts..."
+    log_info "Checking for required build scripts..."
     
     local script_dir="$(dirname "$0")"
     local required_scripts=(
@@ -259,7 +259,7 @@ check_build_scripts() {
 
 # Main execution
 main() {
-    log_info "🎯 iOS Environment Setup Starting..."
+    log_info "iOS Environment Setup Starting..."
     
     # Show environment information
     show_environment_info
@@ -309,7 +309,7 @@ main() {
         return 1
     fi
     
-    log_success "🎉 iOS Environment Setup completed successfully!"
+    log_success "iOS Environment Setup completed successfully!"
     return 0
 }
 

@@ -40,9 +40,9 @@ load_environment_variables() {
     fi
     
     # Set default values
-    export OUTPUT_DIR="${OUTPUT_DIR:-output/ios}"
-    export PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
-    export CM_BUILD_DIR="${CM_BUILD_DIR:-$(pwd)}"
+export OUTPUT_DIR="${OUTPUT_DIR:-output/ios}"
+export PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+export CM_BUILD_DIR="${CM_BUILD_DIR:-$(pwd)}"
     export PROFILE_TYPE="${PROFILE_TYPE:-app-store}"
     
     log_success "Environment variables loaded successfully"
@@ -87,7 +87,7 @@ main() {
     fi
     
     # Stage 5: Firebase Integration (Conditional)
-    if [ "${PUSH_NOTIFY:-false}" = "true" ]; then
+if [ "${PUSH_NOTIFY:-false}" = "true" ]; then
         log_info "--- Stage 5: Setting up Firebase ---"
         if ! "${SCRIPT_DIR}/firebase_setup.sh"; then
             send_email "build_failed" "iOS" "${CM_BUILD_ID:-unknown}" "Firebase setup failed."
