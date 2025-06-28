@@ -146,6 +146,7 @@ class EnvConfig {
       String.fromEnvironment('BOTTOMMENU_FONT_BOLD', defaultValue: 'false');
   static const String bottomMenuFontItalic =
       String.fromEnvironment('BOTTOMMENU_FONT_ITALIC', defaultValue: 'false');
+
   // App Metadata
   // static const String appId = "";
   // static const String versionName = "1.0.0";
@@ -198,21 +199,33 @@ class EnvConfig {
   // static const String bottommenuTextColor = "#000000";
   // static const String bottommenuFont = "DM Sans";
   // static const double bottommenuFontSize = 14.0;
-  // static const bool bottommenuFontBold = false;
-  // static const bool bottommenuFontItalic = false;
-  // static const String bottommenuActiveTabColor = "#0000FF";
-  // static const String bottommenuIconPosition = "top";
-  // static const String bottommenuVisibleOn = "";
 
-  // Firebase Configuration
-  // static const String firebaseConfigAndroid = "";
-  // static const String firebaseConfigIos = "";
+  // Additional properties needed by the code (aliases for compatibility)
+  static const bool isSplash = isSplashEnabled;
+  static const String splashBg = splashBgUrl;
+  static const bool isBottommenu = isBottomMenu;
+  static const String bottommenuItems = bottomMenuItems;
+  static const String bottommenuBgColor = bottomMenuBgColor;
+  static const String bottommenuActiveTabColor = bottomMenuActiveTabColor;
+  static const String bottommenuTextColor = bottomMenuTextColor;
+  static const String bottommenuIconColor = bottomMenuIconColor;
+  static const String bottommenuIconPosition = bottomMenuIconPosition;
+  static const bool isCamera = isCameraEnabled;
+  static const bool isLocation = isLocationEnabled;
+  static const bool isMic = isMicEnabled;
+  static const bool isNotification = isNotificationEnabled;
+  static const bool isContact = isContactEnabled;
+  static const bool isBiometric = isBiometricEnabled;
+  static const bool isCalendar = isCalendarEnabled;
+  static const bool isPulldown = isPullDown;
+  static const String bottommenuFont = bottomMenuFont;
+  static const String bottommenuFontSize = bottomMenuFontSize;
+  static const String bottommenuFontBold = bottomMenuFontBold;
+  static const String bottommenuFontItalic = bottomMenuFontItalic;
 
-  // Android Signing
-  // static const String keyStoreUrl = "";
-  // static const String cmKeystorePassword = "";
-  // static const String cmKeyAlias = "";
-  // static const String cmKeyPassword = "";
+  // Chatbot property (missing from original)
+  static const bool isChatbot =
+      bool.fromEnvironment('IS_CHATBOT', defaultValue: false);
 
   // iOS Signing
   static const String appleTeamId = "";
