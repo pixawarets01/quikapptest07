@@ -19,7 +19,7 @@ generate_podfile() {
         log_info "Creating basic Podfile..."
         cat > ios/Podfile << 'EOF'
 # Uncomment this line to define a global platform for your project
-platform :ios, '12.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -60,6 +60,24 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # Firebase compatibility fixes
+    if target.name == 'FirebaseCoreInternal'
+      target.build_configurations.each do |config|
+        config.build_settings['SWIFT_VERSION'] = '5.0'
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+        config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+        config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
+      end
+    end
+    
+    # General iOS 13+ compatibility
+    target.build_configurations.each do |config|
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 13.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
   end
 end
 EOF
@@ -96,11 +114,31 @@ install_dependencies() {
         log_info "Removed existing Podfile.lock"
     fi
     
-    # Install pods with optimizations
+    # Install pods with Firebase compatibility fixes
+    log_info "Installing CocoaPods with Firebase compatibility..."
+    
+    # Clean pods first for Firebase compatibility
+    rm -rf Pods/ 2>/dev/null || true
+    rm -f Podfile.lock 2>/dev/null || true
+    
+    # Update pod repo for latest Firebase versions
+    pod repo update
+    
+    # Install pods with Firebase-specific optimizations
     if [ "${COCOAPODS_FAST_INSTALL:-true}" = "true" ]; then
         pod install --repo-update --verbose
     else
-        pod install --verbose
+        pod install --verbose --repo-update
+    fi
+    
+    # Post-install Firebase fixes
+    log_info "Applying Firebase post-install fixes..."
+    
+    # Fix Firebase Swift compilation issues
+    if [ -f "Pods/Pods.xcodeproj/project.pbxproj" ]; then
+        # Set Swift version for Firebase pods to avoid compilation errors
+        sed -i.bak 's/SWIFT_VERSION = [0-9]\+\.[0-9]\+;/SWIFT_VERSION = 5.0;/g' Pods/Pods.xcodeproj/project.pbxproj
+        log_info "Applied Swift version fix for Firebase pods"
     fi
     
     cd ..
@@ -175,7 +213,7 @@ create_xcode_archive() {
     
     log_info "Creating archive with configuration: $build_config"
     
-    # Create Xcode archive
+    # Create Xcode archive with Firebase compatibility fixes
     xcodebuild archive \
         -workspace "$workspace" \
         -scheme "$scheme" \
@@ -189,9 +227,15 @@ create_xcode_archive() {
         PRODUCT_BUNDLE_IDENTIFIER="${BUNDLE_ID:-}" \
         MARKETING_VERSION="${VERSION_NAME:-1.0.0}" \
         CURRENT_PROJECT_VERSION="${VERSION_CODE:-1}" \
-        IPHONEOS_DEPLOYMENT_TARGET="12.0" \
+        IPHONEOS_DEPLOYMENT_TARGET="13.0" \
         ENABLE_BITCODE=NO \
-        COMPILER_INDEX_STORE_ENABLE=NO
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        SWIFT_VERSION=5.0 \
+        SWIFT_COMPILATION_MODE=wholemodule \
+        SWIFT_OPTIMIZATION_LEVEL=-O \
+        GCC_OPTIMIZATION_LEVEL=s \
+        VALIDATE_PRODUCT=NO \
+        ONLY_ACTIVE_ARCH=NO
     
     if [ -d "$archive_path" ]; then
         log_success "Xcode archive created successfully: $archive_path"

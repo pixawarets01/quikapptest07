@@ -213,13 +213,20 @@ install_pods() {
     log_info "📦 Installing CocoaPods dependencies..."
     
     # First, ensure Flutter dependencies are resolved
-    log_info "🔄 Running flutter pub get to generate required files..."
+    log_info "Running flutter clean to ensure fresh build..."
+    flutter clean
+    
+    log_info "Running flutter pub get to generate required files..."
     if flutter pub get; then
         log_success "Flutter dependencies resolved"
     else
         log_error "Flutter pub get failed"
         return 1
     fi
+    
+    # Generate iOS platform files if needed
+    log_info "Ensuring iOS platform files are generated..."
+    flutter create --platforms ios . 2>/dev/null || true
     
     # Verify Generated.xcconfig exists
     if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
@@ -242,14 +249,54 @@ install_pods() {
         rm -f Podfile.lock 2>/dev/null || true
     fi
     
-    # Install pods
-    log_info "Running pod install..."
-    if pod install --verbose; then
+    # Install pods with Firebase compatibility fixes
+    log_info "Running pod install with Firebase compatibility fixes..."
+    
+    # Update pod repo to get latest versions
+    pod repo update
+    
+    # Clean pods for Firebase compatibility
+    log_info "Cleaning CocoaPods cache for Firebase compatibility..."
+    rm -rf Pods/ 2>/dev/null || true
+    rm -f Podfile.lock 2>/dev/null || true
+    pod cache clean --all 2>/dev/null || true
+    
+    # Install pods with Firebase-specific flags
+    log_info "Installing CocoaPods with Firebase optimizations..."
+    if pod install --verbose --repo-update; then
         log_success "CocoaPods installation completed"
+        
+        # Apply Firebase-specific fixes
+        log_info "Applying Firebase Swift compilation fixes..."
+        
+        # Fix Swift version for Firebase pods
+        if [ -f "Pods/Pods.xcodeproj/project.pbxproj" ]; then
+            # Backup original file
+            cp "Pods/Pods.xcodeproj/project.pbxproj" "Pods/Pods.xcodeproj/project.pbxproj.backup"
+            
+            # Apply Firebase-specific fixes
+            sed -i.tmp 's/SWIFT_VERSION = [0-9]\+\.[0-9]\+;/SWIFT_VERSION = 5.0;/g' "Pods/Pods.xcodeproj/project.pbxproj"
+            sed -i.tmp 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9]\+\.[0-9]\+;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' "Pods/Pods.xcodeproj/project.pbxproj"
+            rm -f "Pods/Pods.xcodeproj/project.pbxproj.tmp"
+            
+            log_success "Applied Firebase Swift compilation fixes"
+        fi
     else
-        log_error "CocoaPods installation failed"
-        cd ..
-        return 1
+        log_warn "Standard pod install failed, trying with deintegrate and clean install..."
+        
+        # Deintegrate and clean install
+        pod deintegrate 2>/dev/null || true
+        rm -rf Pods/ 2>/dev/null || true
+        rm -f Podfile.lock 2>/dev/null || true
+        
+        # Try again with clean state
+        if pod install --verbose --repo-update; then
+            log_success "CocoaPods clean installation completed"
+        else
+            log_error "CocoaPods installation failed even after clean install"
+            cd ..
+            return 1
+        fi
     fi
     
     cd ..
