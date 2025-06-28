@@ -140,12 +140,18 @@ class EnvConfig {
 // Bottom menu font styling (new)
   static const String bottomMenuFont =
       String.fromEnvironment('BOTTOMMENU_FONT', defaultValue: 'Montserrat');
-  static const String bottomMenuFontSize =
-      String.fromEnvironment('BOTTOMMENU_FONT_SIZE', defaultValue: '12');
-  static const String bottomMenuFontBold =
-      String.fromEnvironment('BOTTOMMENU_FONT_BOLD', defaultValue: 'false');
-  static const String bottomMenuFontItalic =
-      String.fromEnvironment('BOTTOMMENU_FONT_ITALIC', defaultValue: 'false');
+  static double get bottomMenuFontSize =>
+      double.tryParse(
+          String.fromEnvironment('BOTTOMMENU_FONT_SIZE', defaultValue: '12')) ??
+      12.0;
+  static bool get bottomMenuFontBold =>
+      String.fromEnvironment('BOTTOMMENU_FONT_BOLD', defaultValue: 'false')
+          .toLowerCase() ==
+      'true';
+  static bool get bottomMenuFontItalic =>
+      String.fromEnvironment('BOTTOMMENU_FONT_ITALIC', defaultValue: 'false')
+          .toLowerCase() ==
+      'true';
 
   // App Metadata
   // static const String appId = "";
@@ -219,9 +225,9 @@ class EnvConfig {
   static const bool isCalendar = isCalendarEnabled;
   static const bool isPulldown = isPullDown;
   static const String bottommenuFont = bottomMenuFont;
-  static const String bottommenuFontSize = bottomMenuFontSize;
-  static const String bottommenuFontBold = bottomMenuFontBold;
-  static const String bottommenuFontItalic = bottomMenuFontItalic;
+  static double get bottommenuFontSize => bottomMenuFontSize;
+  static bool get bottommenuFontBold => bottomMenuFontBold;
+  static bool get bottommenuFontItalic => bottomMenuFontItalic;
 
   // Chatbot property (missing from original)
   static const bool isChatbot =
