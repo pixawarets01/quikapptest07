@@ -1670,6 +1670,8 @@ app_config: &app_config
 
 # 🔧 Feature Flags Block
 feature_flags: &feature_flags
+  PUSH_NOTIFY: $PUSH_NOTIFY
+  IS_DOMAIN_URL: $IS_DOMAIN_URL
   IS_CHATBOT: $IS_CHATBOT
   IS_SPLASH: $IS_SPLASH
   IS_PULLDOWN: $IS_PULLDOWN
@@ -1765,10 +1767,10 @@ workflows:
         WORKFLOW_ID: "android-free"
         PKG_NAME: $PKG_NAME
 
-        # 🔧 Feature Flags (Optimized for Free)
+        # 🔧 Feature Flags (Optimized for Free - Override defaults)
+        <<: *feature_flags
         PUSH_NOTIFY: "false"
         IS_DOMAIN_URL: "false"
-        <<: *feature_flags
         <<: *permissions
         <<: *ui_config
 
@@ -1851,8 +1853,6 @@ workflows:
         PKG_NAME: $PKG_NAME
 
         # 🔧 Feature Flags (Paid Features)
-        PUSH_NOTIFY: $PUSH_NOTIFY
-        IS_DOMAIN_URL: $IS_DOMAIN_URL
         <<: *feature_flags
         <<: *permissions
         <<: *ui_config
@@ -1947,8 +1947,6 @@ workflows:
         PKG_NAME: $PKG_NAME
 
         # 🔧 Feature Flags (Production Features)
-        PUSH_NOTIFY: $PUSH_NOTIFY
-        IS_DOMAIN_URL: $IS_DOMAIN_URL
         <<: *feature_flags
         <<: *permissions
         <<: *ui_config
@@ -2172,34 +2170,78 @@ workflows:
           PROJECT_ROOT=$(pwd)
           echo "📁 Project root: $PROJECT_ROOT"
 
-          # Check for required scripts with absolute paths
-          if [ -f "$PROJECT_ROOT/lib/scripts/ios/build_ipa.sh" ]; then
-            echo "✅ Enhanced build script found: $PROJECT_ROOT/lib/scripts/ios/build_ipa.sh"
+          # Check for required modular scripts with absolute paths
+          echo "🔍 Validating modular iOS workflow scripts..."
+          
+          # Core utility script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/utils.sh" ]; then
+            echo "✅ Utils script found: $PROJECT_ROOT/lib/scripts/ios/utils.sh"
           else
-            echo "❌ Enhanced build script not found at: $PROJECT_ROOT/lib/scripts/ios/build_ipa.sh"
-            echo "📂 Checking directory contents:"
-            ls -la "$PROJECT_ROOT/lib/scripts/ios/" 2>/dev/null || echo "Directory not accessible"
+            echo "❌ Utils script not found at: $PROJECT_ROOT/lib/scripts/ios/utils.sh"
             exit 1
           fi
 
-          if [ -f "$PROJECT_ROOT/lib/scripts/ios/code_signing.sh" ]; then
-            echo "✅ Enhanced code signing script found: $PROJECT_ROOT/lib/scripts/ios/code_signing.sh"
+          # Main orchestration script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/main.sh" ]; then
+            echo "✅ Main orchestration script found: $PROJECT_ROOT/lib/scripts/ios/main.sh"
           else
-            echo "❌ Enhanced code signing script not found at: $PROJECT_ROOT/lib/scripts/ios/code_signing.sh"
+            echo "❌ Main orchestration script not found at: $PROJECT_ROOT/lib/scripts/ios/main.sh"
             exit 1
           fi
 
-          if [ -f "$PROJECT_ROOT/lib/scripts/ios/firebase.sh" ]; then
-            echo "✅ Firebase script found: $PROJECT_ROOT/lib/scripts/ios/firebase.sh"
+          # Environment setup script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/setup_environment.sh" ]; then
+            echo "✅ Environment setup script found: $PROJECT_ROOT/lib/scripts/ios/setup_environment.sh"
           else
-            echo "❌ Firebase script not found at: $PROJECT_ROOT/lib/scripts/ios/firebase.sh"
+            echo "❌ Environment setup script not found at: $PROJECT_ROOT/lib/scripts/ios/setup_environment.sh"
             exit 1
           fi
 
-          if [ -f "$PROJECT_ROOT/lib/scripts/ios/generate_podfile.sh" ]; then
-            echo "✅ Podfile generator found: $PROJECT_ROOT/lib/scripts/ios/generate_podfile.sh"
+          # Certificate handling script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/handle_certificates.sh" ]; then
+            echo "✅ Certificate handler found: $PROJECT_ROOT/lib/scripts/ios/handle_certificates.sh"
           else
-            echo "❌ Podfile generator not found at: $PROJECT_ROOT/lib/scripts/ios/generate_podfile.sh"
+            echo "❌ Certificate handler not found at: $PROJECT_ROOT/lib/scripts/ios/handle_certificates.sh"
+            exit 1
+          fi
+
+          # Branding assets script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/branding_assets.sh" ]; then
+            echo "✅ Branding assets script found: $PROJECT_ROOT/lib/scripts/ios/branding_assets.sh"
+          else
+            echo "❌ Branding assets script not found at: $PROJECT_ROOT/lib/scripts/ios/branding_assets.sh"
+            exit 1
+          fi
+
+          # Firebase setup script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/firebase_setup.sh" ]; then
+            echo "✅ Firebase setup script found: $PROJECT_ROOT/lib/scripts/ios/firebase_setup.sh"
+          else
+            echo "❌ Firebase setup script not found at: $PROJECT_ROOT/lib/scripts/ios/firebase_setup.sh"
+            exit 1
+          fi
+
+          # Flutter build script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/build_flutter_app.sh" ]; then
+            echo "✅ Flutter build script found: $PROJECT_ROOT/lib/scripts/ios/build_flutter_app.sh"
+          else
+            echo "❌ Flutter build script not found at: $PROJECT_ROOT/lib/scripts/ios/build_flutter_app.sh"
+            exit 1
+          fi
+
+          # IPA export script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/export_ipa.sh" ]; then
+            echo "✅ IPA export script found: $PROJECT_ROOT/lib/scripts/ios/export_ipa.sh"
+          else
+            echo "❌ IPA export script not found at: $PROJECT_ROOT/lib/scripts/ios/export_ipa.sh"
+            exit 1
+          fi
+
+          # Email notifications script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/email_notifications.sh" ]; then
+            echo "✅ Email notifications script found: $PROJECT_ROOT/lib/scripts/ios/email_notifications.sh"
+          else
+            echo "❌ Email notifications script not found at: $PROJECT_ROOT/lib/scripts/ios/email_notifications.sh"
             exit 1
           fi
 
