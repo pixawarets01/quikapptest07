@@ -213,6 +213,26 @@ verify_firebase_config() {
 install_pods() {
     log_info "📦 Installing CocoaPods dependencies..."
     
+    # First, ensure Flutter dependencies are resolved
+    log_info "🔄 Running flutter pub get to generate required files..."
+    if flutter pub get; then
+        log_success "Flutter dependencies resolved"
+    else
+        log_error "Flutter pub get failed"
+        return 1
+    fi
+    
+    # Verify Generated.xcconfig exists
+    if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
+        log_warn "Generated.xcconfig not found after flutter pub get, trying flutter build ios --config-only..."
+        if flutter build ios --config-only; then
+            log_success "Flutter iOS configuration generated"
+        else
+            log_error "Failed to generate Flutter iOS configuration"
+            return 1
+        fi
+    fi
+    
     cd ios
     
     # Clean pods if requested
