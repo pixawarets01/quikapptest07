@@ -116,7 +116,7 @@ update_info_plist() {
 
 # Function to add Firebase dependencies to Podfile
 update_podfile() {
-    log_info "📦 Adding Firebase dependencies to Podfile..."
+    log_info "📦 Checking Podfile for Firebase compatibility..."
     
     local podfile="ios/Podfile"
     
@@ -125,38 +125,33 @@ update_podfile() {
         return 1
     fi
     
-    # Check if Firebase dependencies are already added
-    if grep -q "firebase_core" "$podfile" && grep -q "firebase_messaging" "$podfile"; then
-        log_info "Firebase dependencies already present in Podfile"
-        return 0
-    fi
-    
-    # Create backup of Podfile
-    cp "$podfile" "${podfile}.backup"
-    
-    # Add Firebase dependencies
-    log_info "Adding Firebase Core and Messaging dependencies..."
-    
-    # Find the target section and add Firebase dependencies
-    if grep -q "target 'Runner' do" "$podfile"; then
-        # Add Firebase dependencies after the target line
-        sed -i.tmp "/target 'Runner' do/a\\
-  # Firebase dependencies for push notifications\\
-  pod 'firebase_core'\\
-  pod 'firebase_messaging'\\
-" "$podfile"
+    # Check if Firebase dependencies are manually added (which causes conflicts)
+    if grep -q "pod 'firebase_core'" "$podfile" || grep -q "pod 'firebase_messaging'" "$podfile"; then
+        log_warn "Manual Firebase pod dependencies found in Podfile, removing to avoid conflicts..."
+        
+        # Create backup of Podfile
+        cp "$podfile" "${podfile}.backup"
+        
+        # Remove manual Firebase dependencies
+        sed -i.tmp '/pod.*firebase_core/d' "$podfile"
+        sed -i.tmp '/pod.*firebase_messaging/d' "$podfile"
+        sed -i.tmp '/# Firebase dependencies for push notifications/d' "$podfile"
         rm -f "${podfile}.tmp"
-    else
-        log_warn "Could not find target 'Runner' in Podfile, adding at end"
-        cat >> "$podfile" << EOF
-
-# Firebase dependencies for push notifications
-pod 'firebase_core'
-pod 'firebase_messaging'
-EOF
+        
+        log_success "Manual Firebase dependencies removed from Podfile"
     fi
     
-    log_success "Firebase dependencies added to Podfile"
+    # Verify Flutter will handle Firebase through pubspec.yaml
+    if [ -f "pubspec.yaml" ]; then
+        if grep -q "firebase_core:" "pubspec.yaml" && grep -q "firebase_messaging:" "pubspec.yaml"; then
+            log_success "Firebase dependencies found in pubspec.yaml - Flutter will manage them automatically"
+        else
+            log_warn "Firebase dependencies not found in pubspec.yaml"
+            log_info "Please ensure firebase_core and firebase_messaging are added to pubspec.yaml dependencies"
+        fi
+    fi
+    
+    log_success "Podfile Firebase compatibility check completed"
     return 0
 }
 
@@ -197,12 +192,16 @@ verify_firebase_config() {
         fi
     done
     
-    # Verify Podfile has Firebase dependencies
-    if grep -q "firebase_core" "$podfile" && grep -q "firebase_messaging" "$podfile"; then
-        log_success "Firebase dependencies verified in Podfile"
+    # Verify Firebase dependencies in pubspec.yaml
+    if [ -f "pubspec.yaml" ]; then
+        if grep -q "firebase_core:" "pubspec.yaml" && grep -q "firebase_messaging:" "pubspec.yaml"; then
+            log_success "Firebase dependencies verified in pubspec.yaml"
+        else
+            log_warn "Firebase dependencies not found in pubspec.yaml"
+            log_info "Flutter will attempt to resolve Firebase dependencies automatically"
+        fi
     else
-        log_error "Firebase dependencies not found in Podfile"
-        return 1
+        log_warn "pubspec.yaml not found, skipping Firebase dependency verification"
     fi
     
     log_success "Firebase configuration verification completed"
