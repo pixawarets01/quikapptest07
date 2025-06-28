@@ -69,11 +69,20 @@ create_export_options() {
     <true/>
     <key>thinning</key>
     <string>&lt;none&gt;</string>
+EOF
+
+    # Only add provisioning profiles for non-app-store methods
+    if [ "$method" != "app-store" ]; then
+        cat >> "$export_options_path" << EOF
     <key>provisioningProfiles</key>
     <dict>
         <key>${BUNDLE_ID:-}</key>
         <string>match ${method} ${BUNDLE_ID:-}</string>
     </dict>
+EOF
+    fi
+
+    cat >> "$export_options_path" << EOF
 </dict>
 </plist>
 EOF
