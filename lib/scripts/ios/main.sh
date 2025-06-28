@@ -86,34 +86,41 @@ main() {
         return 1
     fi
     
-    # Stage 5: Firebase Integration (Conditional)
+    # Stage 5: Dynamic Permission Injection
+    log_info "--- Stage 5: Injecting Dynamic Permissions ---"
+    if ! "${SCRIPT_DIR}/inject_permissions.sh"; then
+        send_email "build_failed" "iOS" "${CM_BUILD_ID:-unknown}" "Permission injection failed."
+        return 1
+    fi
+    
+    # Stage 6: Firebase Integration (Conditional)
 if [ "${PUSH_NOTIFY:-false}" = "true" ]; then
-        log_info "--- Stage 5: Setting up Firebase ---"
+        log_info "--- Stage 6: Setting up Firebase ---"
         if ! "${SCRIPT_DIR}/firebase_setup.sh"; then
             send_email "build_failed" "iOS" "${CM_BUILD_ID:-unknown}" "Firebase setup failed."
             return 1
         fi
     else
-        log_info "--- Stage 5: Skipping Firebase (Push notifications disabled) ---"
+        log_info "--- Stage 6: Skipping Firebase (Push notifications disabled) ---"
     fi
     
-    # Stage 6: Flutter Build Process
-    log_info "--- Stage 6: Building Flutter iOS App ---"
+    # Stage 7: Flutter Build Process
+    log_info "--- Stage 7: Building Flutter iOS App ---"
     if ! "${SCRIPT_DIR}/build_flutter_app.sh"; then
         send_email "build_failed" "iOS" "${CM_BUILD_ID:-unknown}" "Flutter build failed."
         return 1
     fi
     
-    # Stage 7: IPA Export
-    log_info "--- Stage 7: Exporting IPA ---"
+    # Stage 8: IPA Export
+    log_info "--- Stage 8: Exporting IPA ---"
     if ! "${SCRIPT_DIR}/export_ipa.sh"; then
         send_email "build_failed" "iOS" "${CM_BUILD_ID:-unknown}" "IPA export failed."
         return 1
     fi
     
-    # Stage 8: Email Notification - Build Success
+    # Stage 9: Email Notification - Build Success
     if [ "${ENABLE_EMAIL_NOTIFICATIONS:-false}" = "true" ]; then
-        log_info "--- Stage 8: Sending Build Success Email ---"
+        log_info "--- Stage 9: Sending Build Success Email ---"
         "${SCRIPT_DIR}/email_notifications.sh" "build_success" "iOS" "${CM_BUILD_ID:-unknown}" || log_warn "Failed to send build success email."
     fi
     

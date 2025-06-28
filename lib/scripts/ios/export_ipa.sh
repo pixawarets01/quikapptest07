@@ -47,6 +47,19 @@ create_export_options() {
     
     log_info "Export method: $method"
     
+    # Check for App Store Connect API authentication
+    local use_app_store_connect_api=false
+    if [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" && -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" && -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]]; then
+        log_info "App Store Connect API authentication detected"
+        use_app_store_connect_api=true
+    else
+        log_warn "App Store Connect API authentication not configured"
+        log_info "Available authentication methods:"
+        log_info "  - APP_STORE_CONNECT_ISSUER_ID: ${APP_STORE_CONNECT_ISSUER_ID:-NOT_SET}"
+        log_info "  - APP_STORE_CONNECT_KEY_IDENTIFIER: ${APP_STORE_CONNECT_KEY_IDENTIFIER:-NOT_SET}"
+        log_info "  - APP_STORE_CONNECT_API_KEY_PATH: ${APP_STORE_CONNECT_API_KEY_PATH:-NOT_SET}"
+    fi
+    
     # Create ExportOptions.plist
     cat > "$export_options_path" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -95,6 +108,7 @@ EOF
         log_info "  - Bundle ID: ${BUNDLE_ID:-}"
         log_info "  - Upload Bitcode: $upload_bitcode"
         log_info "  - Upload Symbols: $upload_symbols"
+        log_info "  - App Store Connect API: $use_app_store_connect_api"
     else
         log_error "Failed to create ExportOptions.plist"
         return 1
@@ -375,6 +389,33 @@ export_ipa_xcodebuild() {
     log_info "Export path: $export_path"
     log_info "Export options: $export_options_path"
     
+    # Check for App Store Connect API authentication
+    local api_key_path=""
+    if [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" && -n "${APP_STORE_CONNECT_KEY_IDENTIFIER:-}" && -n "${APP_STORE_CONNECT_API_KEY_PATH:-}" ]]; then
+        log_info "App Store Connect API authentication detected"
+        
+        # Handle API key path (URL or local file)
+        if [[ "${APP_STORE_CONNECT_API_KEY_PATH}" == http* ]]; then
+            log_info "Downloading API key from URL..."
+            api_key_path="/tmp/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+            if curl -fsSL -o "${api_key_path}" "${APP_STORE_CONNECT_API_KEY_PATH}"; then
+                log_success "API key downloaded to ${api_key_path}"
+                chmod 600 "${api_key_path}"
+            else
+                log_warn "Failed to download API key, will use standard authentication"
+                api_key_path=""
+            fi
+        elif [[ -f "${APP_STORE_CONNECT_API_KEY_PATH}" ]]; then
+            log_info "Using local API key file"
+            api_key_path="${APP_STORE_CONNECT_API_KEY_PATH}"
+        else
+            log_warn "API key path not found: ${APP_STORE_CONNECT_API_KEY_PATH}"
+            api_key_path=""
+        fi
+    else
+        log_info "Using standard authentication (no App Store Connect API)"
+    fi
+    
     # Clean up any existing export artifacts
     if [ -d "$export_path/Runner.app" ]; then
         log_info "Cleaning up previous export artifacts..."
@@ -386,14 +427,32 @@ export_ipa_xcodebuild() {
         retry_count=$((retry_count + 1))
         log_info "Export attempt $retry_count of $max_retries..."
         
+        # Build xcodebuild command
+        local xcodebuild_cmd="xcodebuild -exportArchive \
+            -archivePath \"$archive_path\" \
+            -exportPath \"$export_path\" \
+            -exportOptionsPlist \"$export_options_path\" \
+            -allowProvisioningUpdates"
+        
+        # Add App Store Connect API authentication if available
+        if [[ -n "$api_key_path" && -f "$api_key_path" ]]; then
+            log_info "Using App Store Connect API authentication"
+            xcodebuild_cmd="$xcodebuild_cmd \
+                -authenticationKeyPath \"$api_key_path\" \
+                -authenticationKeyID \"${APP_STORE_CONNECT_KEY_IDENTIFIER}\" \
+                -authenticationKeyIssuerID \"${APP_STORE_CONNECT_ISSUER_ID}\""
+        else
+            log_info "Using standard authentication"
+        fi
+        
+        # Add verbose flag
+        xcodebuild_cmd="$xcodebuild_cmd -verbose"
+        
         # Export IPA
         log_info "Running xcodebuild -exportArchive..."
-        if xcodebuild -exportArchive \
-            -archivePath "$archive_path" \
-            -exportPath "$export_path" \
-            -exportOptionsPlist "$export_options_path" \
-            -allowProvisioningUpdates \
-            -verbose; then
+        log_info "Command: $xcodebuild_cmd"
+        
+        if eval "$xcodebuild_cmd"; then
             
             # Check if IPA was created
             local ipa_file="$export_path/Runner.ipa"
@@ -410,6 +469,12 @@ export_ipa_xcodebuild() {
                 
                 local ipa_size_mb=$((ipa_size / 1024 / 1024))
                 log_info "IPA size: ${ipa_size_mb} MB (${ipa_size} bytes)"
+                
+                # Clean up temporary API key if downloaded
+                if [[ -n "$api_key_path" && "$api_key_path" == "/tmp/"* ]]; then
+                    rm -f "$api_key_path"
+                    log_info "Cleaned up temporary API key"
+                fi
                 
                 return 0
             else
@@ -429,6 +494,12 @@ export_ipa_xcodebuild() {
             fi
         fi
     done
+    
+    # Clean up temporary API key if downloaded
+    if [[ -n "$api_key_path" && "$api_key_path" == "/tmp/"* ]]; then
+        rm -f "$api_key_path"
+        log_info "Cleaned up temporary API key"
+    fi
     
     log_error "IPA export failed after $max_retries attempts"
     return 1
@@ -625,7 +696,7 @@ main() {
         log_info "  - Archive: ${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
         log_info "  - Export Options: ios/ExportOptions.plist"
         
-        return 0
+    return 0
     else
         log_error "Export failed completely"
         return 1

@@ -51,7 +51,7 @@ scripts:
         echo "APP_NAME: $APP_NAME"
         echo "ORG_NAME: $ORG_NAME"
         echo "WEB_URL: $WEB_URL"
-        echo "VERSION_NAME: $VERSION_NAME"      
+        echo "VERSION_NAME: $VERSION_NAME      
         echo "VERSION_CODE: $VERSION_CODE" 
         echo "PKG_NAME: $PKG_NAME"
         echo "BUNDLE_ID: $BUNDLE_ID"
@@ -115,7 +115,7 @@ scripts:
         echo "IS_NOTIFICATION: $IS_NOTIFICATION"
         echo "IS_CONTACT: $IS_CONTACT"
         echo "IS_BIOMETRIC: $IS_BIOMETRIC"
-        echo "IS_CALENDAR: $IS_CALENDAR
+        echo "IS_CALENDAR: $IS_CALENDAR"
 
         echo "*********** Publish Configuration ***********" 
         echo "EMAIL_ID: $EMAIL_ID"
@@ -2089,7 +2089,7 @@ workflows:
     scripts:
       - name: Pre-build Setup
         script: |
-          echo "🚀 Starting iOS Universal Build with Two-Stage Podfile Injection..."
+          echo "🚀 Starting iOS Universal Build with App Store Connect API Authentication..."
           echo "📊 Build Environment:"
           echo "  - Flutter: $(flutter --version | head -1)"
           echo "  - Java: $(java -version 2>&1 | head -1)"
@@ -2115,6 +2115,53 @@ workflows:
           export XCODE_FAST_BUILD=true
           export COCOAPODS_FAST_INSTALL=true
 
+          # 🔐 Enhanced iOS Authentication Validation
+          echo "🔐 Validating iOS Authentication Configuration..."
+          
+          # Check App Store Connect API authentication (Primary method)
+          if [[ -n "${APP_STORE_CONNECT_ISSUER_ID}" && -n "${APP_STORE_CONNECT_KEY_IDENTIFIER}" && -n "${APP_STORE_CONNECT_API_KEY_PATH}" ]]; then
+            echo "✅ App Store Connect API authentication detected:"
+            echo "   - Issuer ID: ${APP_STORE_CONNECT_ISSUER_ID}"
+            echo "   - Key ID: ${APP_STORE_CONNECT_KEY_IDENTIFIER}"
+            echo "   - API Key Path: ${APP_STORE_CONNECT_API_KEY_PATH}"
+            
+            # Validate API key path format
+            if [[ "${APP_STORE_CONNECT_API_KEY_PATH}" == http* ]]; then
+              echo "   - API Key Source: URL (will be downloaded during build)"
+            elif [[ -f "${APP_STORE_CONNECT_API_KEY_PATH}" ]]; then
+              echo "   - API Key Source: Local file"
+            else
+              echo "   - API Key Source: Path (will be validated during build)"
+            fi
+            
+            # Set authentication method
+            export AUTHENTICATION_METHOD="app_store_connect_api"
+            echo "🔐 Using App Store Connect API authentication"
+          else
+            echo "⚠️ App Store Connect API authentication incomplete:"
+            echo "   - Issuer ID: ${APP_STORE_CONNECT_ISSUER_ID:-NOT_SET}"
+            echo "   - Key ID: ${APP_STORE_CONNECT_KEY_IDENTIFIER:-NOT_SET}"
+            echo "   - API Key Path: ${APP_STORE_CONNECT_API_KEY_PATH:-NOT_SET}"
+            
+            # Check manual certificate authentication (Fallback method)
+            if [[ -n "${CERT_PASSWORD}" && -n "${PROFILE_URL}" ]]; then
+              echo "🔐 Manual certificate authentication detected as fallback"
+              export AUTHENTICATION_METHOD="manual_certificates"
+            else
+              echo "❌ No valid authentication method found"
+              echo "   Please configure either:"
+              echo "   1. App Store Connect API (recommended):"
+              echo "      - APP_STORE_CONNECT_ISSUER_ID"
+              echo "      - APP_STORE_CONNECT_KEY_IDENTIFIER"
+              echo "      - APP_STORE_CONNECT_API_KEY_PATH"
+              echo "   2. Manual certificates (fallback):"
+              echo "      - CERT_PASSWORD"
+              echo "      - PROFILE_URL"
+              echo "      - CERT_P12_URL (optional)"
+              exit 1
+            fi
+          fi
+
           # Verify Firebase configuration
           if [ -n "$FIREBASE_CONFIG_IOS" ]; then
             echo "🔥 Firebase configuration detected"
@@ -2138,13 +2185,6 @@ workflows:
               echo "⚠️ Firebase configuration provided but PUSH_NOTIFY is false"
               echo "   Firebase will be disabled during build"
             fi
-          fi
-
-          # Verify iOS signing configuration
-          if [ -n "$CERT_PASSWORD" ] && [ -n "$PROFILE_URL" ]; then
-            echo "🔐 iOS signing configuration detected"
-          else
-            echo "⚠️ Incomplete iOS signing configuration"
           fi
 
           # Enhanced profile type validation
@@ -2210,6 +2250,14 @@ workflows:
             echo "✅ Branding assets script found: $PROJECT_ROOT/lib/scripts/ios/branding_assets.sh"
           else
             echo "❌ Branding assets script not found at: $PROJECT_ROOT/lib/scripts/ios/branding_assets.sh"
+            exit 1
+          fi
+
+          # Permission injection script
+          if [ -f "$PROJECT_ROOT/lib/scripts/ios/inject_permissions.sh" ]; then
+            echo "✅ Permission injection script found: $PROJECT_ROOT/lib/scripts/ios/inject_permissions.sh"
+          else
+            echo "❌ Permission injection script not found at: $PROJECT_ROOT/lib/scripts/ios/inject_permissions.sh"
             exit 1
           fi
 
@@ -2445,6 +2493,7 @@ workflows:
 
       # 📋 Build Documentation
       - output/ios/ARTIFACTS_SUMMARY.txt
+      - output/ios/PERMISSIONS_SUMMARY.txt
       - ios/ExportOptions.plist
 
       # 📊 Build Logs
@@ -2702,6 +2751,7 @@ workflows:
 
       # 📋 Build Documentation
       - output/ios/ARTIFACTS_SUMMARY.txt
+      - output/ios/PERMISSIONS_SUMMARY.txt
       - ios/ExportOptions.plist
 
       # 📊 Build Logs
@@ -3049,6 +3099,7 @@ workflows:
 
       # 📋 Build Documentation
       - output/ios/ARTIFACTS_SUMMARY.txt
+      - output/ios/PERMISSIONS_SUMMARY.txt
       - ios/ExportOptions.plist
 
       # 📊 Build Logs
