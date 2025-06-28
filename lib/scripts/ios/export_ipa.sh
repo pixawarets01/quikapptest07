@@ -16,7 +16,7 @@ create_export_options() {
     log_info "Creating ExportOptions.plist for $PROFILE_TYPE distribution..."
     
     local export_options_path="ios/ExportOptions.plist"
-    local method="app-store"
+    local method="app-store-connect"
     local upload_bitcode="false"
     local upload_symbols="true"
     local compile_bitcode="false"
@@ -24,7 +24,7 @@ create_export_options() {
     # Determine export method based on profile type
     case "${PROFILE_TYPE:-app-store}" in
         "app-store")
-            method="app-store"
+            method="app-store-connect"
             upload_bitcode="false"
             upload_symbols="true"
             ;;
@@ -72,7 +72,7 @@ create_export_options() {
 EOF
 
     # Only add provisioning profiles for non-app-store methods
-    if [ "$method" != "app-store" ]; then
+    if [ "$method" != "app-store-connect" ]; then
         cat >> "$export_options_path" << EOF
     <key>provisioningProfiles</key>
     <dict>
@@ -101,6 +101,60 @@ EOF
     fi
 }
 
+# Function to export IPA using fallback method
+export_ipa_fallback() {
+    log_info "Trying fallback export method..."
+    
+    local archive_path="${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
+    local export_path="${OUTPUT_DIR:-output/ios}"
+    local export_options_path="ios/ExportOptions.plist"
+    
+    # Create a simpler ExportOptions.plist for fallback
+    cat > "$export_options_path" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>teamID</key>
+    <string>${APPLE_TEAM_ID:-}</string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+</dict>
+</plist>
+EOF
+    
+    log_info "Using fallback export options with automatic signing..."
+    
+    # Try export with automatic signing
+    if xcodebuild -exportArchive \
+        -archivePath "$archive_path" \
+        -exportPath "$export_path" \
+        -exportOptionsPlist "$export_options_path" \
+        -allowProvisioningUpdates; then
+        
+        local ipa_file="$export_path/Runner.ipa"
+        if [ -f "$ipa_file" ]; then
+            log_success "Fallback export successful: $ipa_file"
+            return 0
+        fi
+    fi
+    
+    log_error "Fallback export also failed"
+    return 1
+}
+
 # Function to export IPA using xcodebuild
 export_ipa_xcodebuild() {
     log_info "Exporting IPA using xcodebuild..."
@@ -108,6 +162,8 @@ export_ipa_xcodebuild() {
     local archive_path="${OUTPUT_DIR:-output/ios}/Runner.xcarchive"
     local export_path="${OUTPUT_DIR:-output/ios}"
     local export_options_path="ios/ExportOptions.plist"
+    local max_retries=3
+    local retry_count=0
     
     # Verify archive exists
     if [ ! -d "$archive_path" ]; then
@@ -125,36 +181,63 @@ export_ipa_xcodebuild() {
     log_info "Export path: $export_path"
     log_info "Export options: $export_options_path"
     
-    # Export IPA
-    log_info "Running xcodebuild -exportArchive..."
-    xcodebuild -exportArchive \
-        -archivePath "$archive_path" \
-        -exportPath "$export_path" \
-        -exportOptionsPlist "$export_options_path" \
-        -allowProvisioningUpdates \
-        -verbose
-    
-    # Check if IPA was created
-    local ipa_file="$export_path/Runner.ipa"
-    if [ -f "$ipa_file" ]; then
-        log_success "IPA exported successfully: $ipa_file"
-        
-        # Get IPA file size
-        local ipa_size
-        if command_exists stat; then
-            ipa_size=$(stat -c%s "$ipa_file" 2>/dev/null || stat -f%z "$ipa_file" 2>/dev/null || echo "0")
-        else
-            ipa_size=$(ls -l "$ipa_file" 2>/dev/null | awk '{print $5}' || echo "0")
-        fi
-        
-        local ipa_size_mb=$((ipa_size / 1024 / 1024))
-        log_info "IPA size: ${ipa_size_mb} MB (${ipa_size} bytes)"
-        
-        return 0
-    else
-        log_error "IPA export failed - file not found: $ipa_file"
-        return 1
+    # Clean up any existing export artifacts
+    if [ -d "$export_path/Runner.app" ]; then
+        log_info "Cleaning up previous export artifacts..."
+        rm -rf "$export_path/Runner.app"
     fi
+    
+    # Export IPA with retry logic
+    while [ $retry_count -lt $max_retries ]; do
+        retry_count=$((retry_count + 1))
+        log_info "Export attempt $retry_count of $max_retries..."
+        
+        # Export IPA
+        log_info "Running xcodebuild -exportArchive..."
+        if xcodebuild -exportArchive \
+            -archivePath "$archive_path" \
+            -exportPath "$export_path" \
+            -exportOptionsPlist "$export_options_path" \
+            -allowProvisioningUpdates \
+            -verbose; then
+            
+            # Check if IPA was created
+            local ipa_file="$export_path/Runner.ipa"
+            if [ -f "$ipa_file" ]; then
+                log_success "IPA exported successfully: $ipa_file"
+                
+                # Get IPA file size
+                local ipa_size
+                if command_exists stat; then
+                    ipa_size=$(stat -c%s "$ipa_file" 2>/dev/null || stat -f%z "$ipa_file" 2>/dev/null || echo "0")
+                else
+                    ipa_size=$(ls -l "$ipa_file" 2>/dev/null | awk '{print $5}' || echo "0")
+                fi
+                
+                local ipa_size_mb=$((ipa_size / 1024 / 1024))
+                log_info "IPA size: ${ipa_size_mb} MB (${ipa_size} bytes)"
+                
+                return 0
+            else
+                log_error "IPA export failed - file not found: $ipa_file"
+                if [ $retry_count -lt $max_retries ]; then
+                    log_info "Retrying export in 5 seconds..."
+                    sleep 5
+                    continue
+                fi
+            fi
+        else
+            log_error "xcodebuild export failed with exit code $?"
+            if [ $retry_count -lt $max_retries ]; then
+                log_info "Retrying export in 5 seconds..."
+                sleep 5
+                continue
+            fi
+        fi
+    done
+    
+    log_error "IPA export failed after $max_retries attempts"
+    return 1
 }
 
 # Function to validate IPA file
@@ -258,8 +341,11 @@ main() {
     
     # Export IPA using xcodebuild
     if ! export_ipa_xcodebuild; then
-        log_error "Failed to export IPA"
-        return 1
+        log_warn "Primary export method failed, trying fallback..."
+        if ! export_ipa_fallback; then
+            log_error "Both primary and fallback export methods failed"
+            return 1
+        fi
     fi
     
     # Validate IPA file
