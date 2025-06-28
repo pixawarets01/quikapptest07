@@ -190,12 +190,12 @@ EOF
     # Create summary
     log_success "Archive-only export created: $export_dir"
     log_info "Archive package contents:"
-    log_info "  ✅ Runner.xcarchive ($(du -h "$export_dir/Runner.xcarchive" | cut -f1))"
-    log_info "  📄 BUILD_INFO.txt (detailed information)"
-    log_info "  ✅ EXPORT_STATUS.txt (success marker)"
+    log_info "  Runner.xcarchive ($(du -h "$export_dir/Runner.xcarchive" | cut -f1))"
+    log_info "  BUILD_INFO.txt (detailed information)"
+    log_info "  EXPORT_STATUS.txt (success marker)"
     
-    log_warning "No IPA file was created due to export failures"
-    log_warning "Archive is available for manual export in Xcode"
+    log_warn "No IPA file was created due to export failures"
+    log_warn "Archive is available for manual export in Xcode"
     log_info "Manual export guide available in BUILD_INFO.txt"
     
     log_success "Archive-only export succeeded!"
@@ -390,11 +390,11 @@ export_ipa_xcodebuild() {
                 
                 # Check for specific error types
                 if [ $exit_code -eq 139 ]; then
-                    log_warning "Segmentation fault detected - this is a known Xcode issue"
+                    log_warn "Segmentation fault detected - this is a known Xcode issue"
                     log_info "Trying alternative export method..."
                     break
                 elif [ $exit_code -eq 124 ]; then
-                    log_warning "Export timed out after 5 minutes"
+                    log_warn "Export timed out after 5 minutes"
                 fi
                 
                 if [ $retry_count -lt $max_retries ]; then
@@ -409,7 +409,7 @@ export_ipa_xcodebuild() {
     fi
     
     # If App Store Connect API failed, try manual certificate authentication
-    log_warning "App Store Connect API export failed, trying manual certificate authentication..."
+    log_warn "App Store Connect API export failed, trying manual certificate authentication..."
     
     # Check if manual certificates are available
     if [ -n "${CERT_P12_URL:-}" ] && [ -n "${PROFILE_URL:-}" ]; then
@@ -467,16 +467,14 @@ export_ipa_xcodebuild() {
     fi
     
     # If all export methods failed, create archive-only export
-    log_warning "All export methods failed, creating archive-only export..."
+    log_warn "All export methods failed, creating archive-only export..."
     create_archive_only_export
     return 0
 }
 
 # Function to validate IPA file
 validate_ipa() {
-    log_info "Validating IPA file..."
-    
-    local ipa_file="${OUTPUT_DIR:-output/ios}/Runner.ipa"
+    local ipa_file="$1"
     
     if [ ! -f "$ipa_file" ]; then
         log_error "IPA file not found: $ipa_file"
@@ -484,21 +482,26 @@ validate_ipa() {
     fi
     
     # Check file size
-    if ! validate_file "$ipa_file" 1048576; then  # 1MB minimum
-        log_error "IPA file validation failed"
+    local ipa_size
+    if command_exists stat; then
+        ipa_size=$(stat -c%s "$ipa_file" 2>/dev/null || stat -f%z "$ipa_file" 2>/dev/null || echo "0")
+    else
+        ipa_size=$(ls -l "$ipa_file" 2>/dev/null | awk '{print $5}' || echo "0")
+    fi
+    
+    if [ "$ipa_size" -lt 1000000 ]; then  # Less than 1MB
+        log_error "IPA file too small (${ipa_size} bytes): $ipa_file"
         return 1
     fi
     
-    # Check if it's a valid ZIP file (IPA is a ZIP archive)
-    if command_exists unzip; then
-        if unzip -t "$ipa_file" >/dev/null 2>&1; then
-            log_success "IPA file structure validation passed"
-        else
-            log_warn "IPA file structure validation failed, but file exists"
-        fi
+    # Check if it's a valid ZIP file (IPAs are ZIP files)
+    if ! unzip -t "$ipa_file" >/dev/null 2>&1; then
+        log_error "IPA file is not a valid ZIP archive: $ipa_file"
+        return 1
     fi
     
-    log_success "IPA validation completed"
+    local ipa_size_mb=$((ipa_size / 1024 / 1024))
+    log_success "IPA validation passed: $ipa_file (${ipa_size_mb} MB)"
     return 0
 }
 
@@ -599,7 +602,7 @@ validate_export_environment() {
         if [ -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]; then
             missing_vars+=("APP_STORE_CONNECT_ISSUER_ID")
         fi
-        log_warning "⚠️ App Store Connect API authentication incomplete"
+        log_warn "⚠️ App Store Connect API authentication incomplete"
     fi
     
     # Check manual certificate variables
@@ -616,7 +619,7 @@ validate_export_environment() {
         if [ -z "${CERT_PASSWORD:-}" ]; then
             missing_vars+=("CERT_PASSWORD")
         fi
-        log_warning "⚠️ Manual certificate authentication incomplete"
+        log_warn "⚠️ Manual certificate authentication incomplete"
     fi
     
     # Check required variables
@@ -632,9 +635,9 @@ validate_export_environment() {
     
     # Report validation results
     if [ ${#missing_vars[@]} -gt 0 ]; then
-        log_warning "Missing environment variables:"
+        log_warn "Missing environment variables:"
         for var in "${missing_vars[@]}"; do
-            log_warning "  - $var"
+            log_warn "  - $var"
         done
     fi
     
