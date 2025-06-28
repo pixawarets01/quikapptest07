@@ -380,7 +380,7 @@ export_ipa_xcodebuild() {
             log_info "Command: $export_cmd"
             
             # Run with timeout and capture exit code
-            if timeout 300 bash -c "$export_cmd"; then
+            if bash -c "$export_cmd"; then
                 log_success "IPA export completed successfully!"
                 rm -f "$api_key_path"
                 return 0
@@ -435,12 +435,32 @@ export_ipa_xcodebuild() {
             return 1
         fi
         
-        # Install certificate
-        local keychain_path="$HOME/Library/Keychains/login.keychain-db"
-        if security import "$cert_dir/certificate.p12" -k "$keychain_path" -P "${CERT_PASSWORD:-}" -T /usr/bin/codesign 2>/dev/null; then
-            log_success "Certificate installed in keychain"
-        else
-            log_error "Failed to install certificate"
+        # Install certificate with multiple fallback methods
+        local keychain_paths=(
+            "$HOME/Library/Keychains/login.keychain-db"
+            "$HOME/Library/Keychains/login.keychain"
+            "/Users/builder/Library/Keychains/login.keychain-db"
+            "/Users/builder/Library/Keychains/login.keychain"
+        )
+        
+        local cert_installed=false
+        for keychain_path in "${keychain_paths[@]}"; do
+            if [ -f "$keychain_path" ]; then
+                log_info "Trying to install certificate in: $keychain_path"
+                if security import "$cert_dir/certificate.p12" -k "$keychain_path" -P "${CERT_PASSWORD:-}" -T /usr/bin/codesign 2>/dev/null; then
+                    log_success "Certificate installed in keychain: $keychain_path"
+                    cert_installed=true
+                    break
+                else
+                    log_warn "Failed to install certificate in: $keychain_path"
+                fi
+            fi
+        done
+        
+        if [ "$cert_installed" = false ]; then
+            log_error "Failed to install certificate in any keychain"
+            log_info "Available keychains:"
+            security list-keychains 2>/dev/null || log_warn "Could not list keychains"
             return 1
         fi
         
@@ -464,6 +484,60 @@ export_ipa_xcodebuild() {
             log_error "Manual certificate export failed"
             rm -rf "$cert_dir"
         fi
+    fi
+    
+    # If all export methods failed, try simple export with automatic signing
+    log_warn "All authentication methods failed, trying simple export with automatic signing..."
+    
+    # Try direct export without authentication (for development/testing)
+    log_info "Trying direct export without authentication..."
+    if xcodebuild -exportArchive \
+        -archivePath "$archive_path" \
+        -exportPath "$export_path" \
+        -exportOptionsPlist "$export_options_path"; then
+        log_success "Direct export completed successfully!"
+        return 0
+    else
+        log_error "Direct export failed"
+    fi
+    
+    # Create simple export options for automatic signing
+    local simple_export_options="ios/SimpleExportOptions.plist"
+    cat > "$simple_export_options" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string>
+    <key>teamID</key>
+    <string>${APPLE_TEAM_ID:-}</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+</dict>
+</plist>
+EOF
+    
+    log_info "Trying simple export with automatic signing..."
+    if xcodebuild -exportArchive \
+        -archivePath "$archive_path" \
+        -exportPath "$export_path" \
+        -exportOptionsPlist "$simple_export_options" \
+        -allowProvisioningUpdates; then
+        log_success "Simple export with automatic signing completed successfully!"
+        return 0
+    else
+        log_error "Simple export also failed"
     fi
     
     # If all export methods failed, create archive-only export
@@ -580,6 +654,53 @@ EOF
     log_success "Artifacts summary created: $summary_file"
 }
 
+# Function to check and ensure required tools
+check_required_tools() {
+    log_info "Checking required tools..."
+    
+    local missing_tools=()
+    
+    # Check for xcodebuild
+    if ! command_exists xcodebuild; then
+        missing_tools+=("xcodebuild")
+    else
+        log_info "✅ xcodebuild available: $(xcodebuild -version | head -1)"
+    fi
+    
+    # Check for security command
+    if ! command_exists security; then
+        missing_tools+=("security")
+    else
+        log_info "✅ security command available"
+    fi
+    
+    # Check for curl
+    if ! command_exists curl; then
+        missing_tools+=("curl")
+    else
+        log_info "✅ curl available"
+    fi
+    
+    # Check for unzip
+    if ! command_exists unzip; then
+        missing_tools+=("unzip")
+    else
+        log_info "✅ unzip available"
+    fi
+    
+    # Report missing tools
+    if [ ${#missing_tools[@]} -gt 0 ]; then
+        log_error "Missing required tools:"
+        for tool in "${missing_tools[@]}"; do
+            log_error "  - $tool"
+        done
+        return 1
+    fi
+    
+    log_success "All required tools are available"
+    return 0
+}
+
 # Function to validate export environment
 validate_export_environment() {
     log_info "Validating export environment..."
@@ -663,6 +784,14 @@ main() {
     if ! validate_export_environment; then
         log_error "Export environment validation failed"
         log_error "Creating archive-only export due to missing authentication"
+        create_archive_only_export
+        return 0
+    fi
+    
+    # Check required tools
+    if ! check_required_tools; then
+        log_error "Required tools check failed"
+        log_error "Creating archive-only export due to missing tools"
         create_archive_only_export
         return 0
     fi
