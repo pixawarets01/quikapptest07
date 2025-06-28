@@ -2096,7 +2096,7 @@ workflows:
           echo "  - Xcode: $(xcodebuild -version | head -1)"
           echo "  - CocoaPods: $(pod --version)"
           echo "  - Memory: $(sysctl -n hw.memsize | awk '{print $0/1024/1024/1024 " GB"}')"
-          echo "  - Profile Type: $PROFILE_TYPE"
+          echo "  - Profile Type : $PROFILE_TYPE"
 
           # Enhanced error handling
           set -euo pipefail
